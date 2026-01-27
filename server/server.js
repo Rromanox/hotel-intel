@@ -83,16 +83,17 @@ app.get('/api/hotels', async (req, res) => {
     }
 
     try {
+        // Primary search - focused query with lowest price sort to get more hotels
         const params = new URLSearchParams({
             engine: 'google_hotels',
-            q: 'Mackinaw City Michigan Hotels',
+            q: 'Mackinaw City, Michigan, United States',
             check_in_date: checkin,
             check_out_date: checkout,
             adults: adults,
             currency: 'USD',
             gl: 'us',
             hl: 'en',
-            sort_by: '3',
+            sort_by: '3', // lowest price - surfaces budget/boutique hotels
             api_key: SERPAPI_KEY
         });
 
@@ -107,10 +108,100 @@ app.get('/api/hotels', async (req, res) => {
             return res.status(400).json({ error: data.error });
         }
 
+        let allProperties = data.properties || [];
+        console.log(`   Found ${allProperties.length} hotels in primary search`);
+
+        // Check if our hotels are in results
+        const hasAmerican = allProperties.some(p => 
+            p.name?.toLowerCase().includes('american boutique'));
+        const hasRiviera = allProperties.some(p => 
+            p.name?.toLowerCase().includes('riviera'));
+
+        // If American Boutique Inn is missing, try a targeted search
+        if (!hasAmerican) {
+            console.log(`   ⚠️ American Boutique missing - trying targeted search`);
+            try {
+                const backupParams = new URLSearchParams({
+                    engine: 'google_hotels',
+                    q: 'American Boutique Inn Mackinaw City Michigan',
+                    check_in_date: checkin,
+                    check_out_date: checkout,
+                    adults: adults,
+                    currency: 'USD',
+                    gl: 'us',
+                    hl: 'en',
+                    api_key: SERPAPI_KEY
+                });
+
+                const backupUrl = `https://serpapi.com/search.json?${backupParams}`;
+                const backupResponse = await fetch(backupUrl);
+                const backupData = await backupResponse.json();
+
+                if (backupData.properties?.length > 0) {
+                    // Add American Boutique if found
+                    const american = backupData.properties.find(p => 
+                        p.name?.toLowerCase().includes('american boutique'));
+                    if (american) {
+                        allProperties.push(american);
+                        console.log(`   ✅ Found American Boutique in targeted search`);
+                    }
+                }
+            } catch (backupError) {
+                console.log(`   ❌ Backup search failed: ${backupError.message}`);
+            }
+        }
+
+        // If still missing hotels, try highest rating sort for different results
+        if (allProperties.length < 10) {
+            console.log(`   ⚠️ Only ${allProperties.length} hotels - trying rating sort`);
+            try {
+                const ratingParams = new URLSearchParams({
+                    engine: 'google_hotels',
+                    q: 'hotels Mackinaw City MI',
+                    check_in_date: checkin,
+                    check_out_date: checkout,
+                    adults: adults,
+                    currency: 'USD',
+                    gl: 'us',
+                    hl: 'en',
+                    sort_by: '8', // highest rating
+                    api_key: SERPAPI_KEY
+                });
+
+                const ratingUrl = `https://serpapi.com/search.json?${ratingParams}`;
+                const ratingResponse = await fetch(ratingUrl);
+                const ratingData = await ratingResponse.json();
+
+                if (ratingData.properties?.length > 0) {
+                    // Add any new hotels not already in list
+                    const existingNames = new Set(allProperties.map(p => p.name?.toLowerCase().trim()));
+                    ratingData.properties.forEach(p => {
+                        if (!existingNames.has(p.name?.toLowerCase().trim())) {
+                            allProperties.push(p);
+                        }
+                    });
+                    console.log(`   ✅ Added hotels from rating sort, now ${allProperties.length} total`);
+                }
+            } catch (ratingError) {
+                console.log(`   ❌ Rating sort search failed: ${ratingError.message}`);
+            }
+        }
+
+        // Deduplicate by hotel name
+        const seen = new Set();
+        const uniqueProperties = allProperties.filter(p => {
+            const key = p.name?.toLowerCase().trim();
+            if (!key || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        console.log(`   📊 Total unique hotels: ${uniqueProperties.length}`);
+
         res.json({
             success: true,
             date: checkin,
-            properties: data.properties || [],
+            properties: uniqueProperties,
             search_metadata: data.search_metadata
         });
 
