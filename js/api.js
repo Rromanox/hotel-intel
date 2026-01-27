@@ -254,39 +254,32 @@ const API = {
 
 /**
  * Format a date for the API (YYYY-MM-DD)
+ * Note: Also defined in config.js, this is a fallback
  */
-function formatDateForAPI(date) {
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+if (typeof formatDateForAPI === 'undefined') {
+    function formatDateForAPI(date) {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 }
 
 /**
  * Get all dates in a given month
+ * Note: Also defined in config.js, this is a fallback
  */
-function getDatesInMonth(year, month) {
-    const dates = [];
-    const daysInMonth = new Date(year, month, 0).getDate();
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month - 1, day);
-        dates.push(formatDateForAPI(date));
+if (typeof getDatesInMonth === 'undefined') {
+    function getDatesInMonth(year, month) {
+        const dates = [];
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month - 1, day);
+            dates.push(formatDateForAPI(date));
+        }
+        
+        return dates;
     }
-    
-    return dates;
 }
-
-/**
- * Month names for display
- */
-const MONTH_NAMES = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-];
-
-const MONTH_NAMES_SHORT = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-];
