@@ -14,10 +14,10 @@ const CONFIG = {
         
         // Render Proxy URL (secure - API key stored on server)
         // UPDATE THIS after deploying to Render!
-        proxyUrl: '', // e.g., 'https://your-app-name.onrender.com/api/city'
+        proxyUrl: 'https://hotel-intel-api-awb4.onrender.com/api/city', // e.g., 'https://your-app-name.onrender.com/api/city'
         
         // Set to 'proxy' for secure multi-device, or 'direct' for localStorage key
-        mode: 'direct', // Change to 'proxy' after setting up Render
+        mode: 'proxy', // Change to 'proxy' after setting up Render
         
         // Only used in 'direct' mode - leave empty, enter in Settings page
         apiKey: '',
