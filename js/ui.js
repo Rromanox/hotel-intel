@@ -1255,8 +1255,17 @@ const UI = {
         // Populate quick month buttons
         this.populateQuickMonthButtons();
 
-        // Get current credits
-        await this.refreshModalCredits();
+        // DON'T auto-check credits - it wastes an API call!
+        // User can click "Refresh" button if they want to check
+        // Just show cached value or "--"
+        if (this.currentCredits !== null) {
+            if (this.elements.modalCreditsRemaining) {
+                this.elements.modalCreditsRemaining.textContent = this.currentCredits;
+            }
+            if (this.elements.estCreditsAvailable) {
+                this.elements.estCreditsAvailable.textContent = this.currentCredits;
+            }
+        }
 
         // Show modal
         modal.classList.add('active');
@@ -1531,22 +1540,32 @@ const UI = {
             }
         }, { fullFetch: false, stopOnLimit: true });
 
-        // Save data
+        // Save data - ONLY dates that have hotels!
         if (Object.keys(result.results).length > 0) {
             const existingData = Storage.loadData() || { dates: {}, dataVersion: '2.0' };
             
-            // Mark each date as real data (not demo)
+            // Only save dates that actually have hotels
+            let savedCount = 0;
             Object.keys(result.results).forEach(date => {
-                result.results[date].isDemo = false;
+                const dateData = result.results[date];
+                if (dateData.hotels && dateData.hotels.length > 0) {
+                    dateData.isDemo = false;
+                    existingData.dates[date] = dateData;
+                    savedCount++;
+                    console.log(`✅ Saved ${date}: ${dateData.hotels.length} hotels`);
+                } else {
+                    console.log(`⏭️ Skipped ${date}: 0 hotels (not saving)`);
+                }
             });
             
-            Object.assign(existingData.dates, result.results);
-            existingData.lastFullUpdate = new Date().toISOString();
-            existingData.totalHotels = 15;
-            existingData.isDemo = false;
-            existingData.dataVersion = '2.0';
-            Storage.saveData(existingData);
-            Storage.setLastUpdate();
+            if (savedCount > 0) {
+                existingData.lastFullUpdate = new Date().toISOString();
+                existingData.totalHotels = 15;
+                existingData.isDemo = false;
+                existingData.dataVersion = '2.0';
+                Storage.saveData(existingData);
+                Storage.setLastUpdate();
+            }
         }
 
         // Log the fetch
@@ -1599,21 +1618,32 @@ const UI = {
             }
         }, { fullFetch: false, stopOnLimit: true });
 
-        // Save data
+        // Save data - ONLY dates that have hotels!
         if (Object.keys(result.results).length > 0) {
             const existingData = Storage.loadData() || { dates: {}, dataVersion: '2.0' };
             
+            // Only save dates that actually have hotels
+            let savedCount = 0;
             Object.keys(result.results).forEach(date => {
-                result.results[date].isDemo = false;
+                const dateData = result.results[date];
+                if (dateData.hotels && dateData.hotels.length > 0) {
+                    dateData.isDemo = false;
+                    existingData.dates[date] = dateData;
+                    savedCount++;
+                    console.log(`✅ Saved ${date}: ${dateData.hotels.length} hotels`);
+                } else {
+                    console.log(`⏭️ Skipped ${date}: 0 hotels (not saving)`);
+                }
             });
             
-            Object.assign(existingData.dates, result.results);
-            existingData.lastFullUpdate = new Date().toISOString();
-            existingData.totalHotels = 15;
-            existingData.isDemo = false;
-            existingData.dataVersion = '2.0';
-            Storage.saveData(existingData);
-            Storage.setLastUpdate();
+            if (savedCount > 0) {
+                existingData.lastFullUpdate = new Date().toISOString();
+                existingData.totalHotels = 15;
+                existingData.isDemo = false;
+                existingData.dataVersion = '2.0';
+                Storage.saveData(existingData);
+                Storage.setLastUpdate();
+            }
         }
 
         // Log

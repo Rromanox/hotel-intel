@@ -4,29 +4,24 @@
  * 
  * SECURITY: API key is handled via Render proxy server
  * Your key never touches the browser or GitHub!
+ * 
+ * NOW USING: SerpAPI (Google Hotels)
  */
 
 const CONFIG = {
-    // API Settings
+    // API Settings - SerpAPI via Render Proxy
     api: {
-        // Direct MakCorps API (requires key in localStorage - less secure)
-        directUrl: 'https://api.makcorps.com/city',
-        
         // Render Proxy URL (secure - API key stored on server)
-        proxyUrl: 'https://hotel-intel-api-awb4.onrender.com/api/city',
+        proxyUrl: 'https://hotel-intel-api-awb4.onrender.com/api/hotels',
+        accountUrl: 'https://hotel-intel-api-awb4.onrender.com/api/account',
         
-        // Using proxy mode for secure multi-device access
-        mode: 'proxy',
+        // API provider
+        provider: 'serpapi',
         
-        // Only used in 'direct' mode
-        apiKey: '',
-        
-        cityId: '42424', // Mackinaw City
+        // Default search params
         params: {
-            pagination: '0',
-            cur: 'USD',
-            rooms: '1',
-            adults: '2'
+            adults: '2',
+            currency: 'USD'
         }
     },
 
@@ -35,34 +30,30 @@ const CONFIG = {
     // ===========================================
     yourHotels: {
         'Riviera Motel': {
-            id: 1162889,
             aliases: ['riviera', 'riviera motel']
         },
         'American Boutique Inn': {
-            id: 564648,
-            aliases: ['american boutique', 'american boutique inn']
+            aliases: ['american boutique', 'american boutique inn', 'american boutique inn lakeview']
         }
     },
 
     // ===========================================
-    // YOUR DIRECT COMPETITORS (13 - based on actual API data)
+    // YOUR DIRECT COMPETITORS (based on SerpAPI Google Hotels data)
     // ===========================================
     trackedCompetitors: [
-        // Original competitors
         'Super 8',           // "Super 8 by Wyndham Bridgeview of Mackinaw City"
-        'Vindel',            // "Vindel Motel"
         'Lighthouse View',   // "Lighthouse View Motel"  
-        'Parkside',          // "Parkside Inn - Bridgeside"
-        // Chain competitors (confirmed in API)
         'Days Inn',          // "Days Inn by Wyndham Mackinaw City - Lakeview"
         'Comfort Inn',       // "Comfort Inn Lakeside"
-        'Quality Inn',       // "Quality Inn & Suites Beachfront"
-        'Baymont',           // "Baymont By Wyndham Mackinaw City"
+        'Quality Inn',       // "Quality Inn & Suites Mackinaw City Beachfront"
+        'Baymont',           // "Baymont by Wyndham Mackinaw City"
         'Holiday Inn',       // "Holiday Inn Express Mackinaw City by IHG"
-        'Clarion',           // "Clarion Hotel Beachfront"
+        'Clarion',           // "Clarion Hotel Mackinaw City Beachfront"
         'Best Western',      // "Best Western Plus Dockside Waterfront Inn"
-        'Thunderbird',       // "Thunderbird Inn"
-        'Clearwater'         // "Clearwater Lakeshore Motel"
+        'Clearwater',        // "Clearwater Lakeshore Motel"
+        'Ramada',            // "Ramada by Wyndham Mackinaw City Waterfront"
+        'Bridge Vista',      // "Bridge Vista Beach Hotel & Convention Center"
+        'Bayside'            // "Bayside Hotel of Mackinac"
     ],
 
     // Update Settings

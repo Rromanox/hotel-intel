@@ -1,97 +1,139 @@
 /**
  * Mackinaw Intel - API Proxy Server
- * Deploy this to Render to keep your MakCorps API key secure
+ * Securely proxies requests to SerpAPI (Google Hotels)
  * 
- * Setup on Render:
+ * Deploy to Render.com:
  * 1. Create a new Web Service
- * 2. Connect your GitHub repo (or use this folder)
- * 3. Set environment variable: MAKCORPS_API_KEY = your_api_key
- * 4. Build command: npm install
- * 5. Start command: node server.js
+ * 2. Connect your GitHub repo
+ * 3. Set environment variable: SERPAPI_KEY = your_api_key
+ * 4. Root Directory: server
+ * 5. Build command: npm install
+ * 6. Start command: node server.js
  */
 
 const express = require('express');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-// Your API key - set this in Render's environment variables, NOT here!
-const API_KEY = process.env.MAKCORPS_API_KEY;
+// Get API key from environment variable
+const SERPAPI_KEY = process.env.SERPAPI_KEY;
 
-// CORS - allow your GitHub Pages site
+// CORS configuration - allow requests from GitHub Pages
 app.use(cors({
     origin: [
         'https://rromanox.github.io',
         'http://localhost:3000',
-        'http://127.0.0.1:5500' // Live Server
-    ]
+        'http://127.0.0.1:5500'
+    ],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
 }));
 
 app.use(express.json());
 
-// Health check
+// Health check endpoint
 app.get('/', (req, res) => {
     res.json({ 
         status: 'ok', 
-        service: 'Mackinaw Intel API Proxy',
-        hasApiKey: !!API_KEY
+        service: 'Mackinaw Intel API Proxy (SerpAPI)',
+        hasApiKey: !!SERPAPI_KEY 
     });
 });
 
-// Proxy endpoint for city search
-app.get('/api/city', async (req, res) => {
-    if (!API_KEY) {
-        return res.status(500).json({ error: 'API key not configured on server' });
+/**
+ * Proxy endpoint for Google Hotels via SerpAPI
+ * GET /api/hotels?checkin=2026-05-10&checkout=2026-05-11
+ */
+app.get('/api/hotels', async (req, res) => {
+    if (!SERPAPI_KEY) {
+        return res.status(500).json({ error: 'API key not configured' });
+    }
+
+    const { checkin, checkout, adults = 2 } = req.query;
+
+    if (!checkin || !checkout) {
+        return res.status(400).json({ error: 'checkin and checkout dates required' });
     }
 
     try {
-        const { cityid, pagination, cur, rooms, adults, checkin, checkout } = req.query;
-
-        // Build MakCorps URL
         const params = new URLSearchParams({
-            api_key: API_KEY,
-            cityid: cityid || '42424',
-            pagination: pagination || '0',
-            cur: cur || 'USD',
-            rooms: rooms || '1',
-            adults: adults || '2',
-            checkin,
-            checkout
+            engine: 'google_hotels',
+            q: 'Mackinaw City Michigan Hotels',
+            check_in_date: checkin,
+            check_out_date: checkout,
+            adults: adults,
+            currency: 'USD',
+            gl: 'us',
+            hl: 'en',
+            sort_by: '3', // Sort by lowest price to get more variety
+            api_key: SERPAPI_KEY
         });
 
-        const url = `https://api.makcorps.com/city?${params.toString()}`;
-        
+        const url = `https://serpapi.com/search.json?${params}`;
+        console.log(`Fetching: ${checkin} to ${checkout}`);
+
         const response = await fetch(url);
         const data = await response.json();
 
-        // Forward the response
-        res.status(response.status).json(data);
+        if (data.error) {
+            console.error('SerpAPI Error:', data.error);
+            return res.status(400).json({ error: data.error });
+        }
+
+        // Return the properties array
+        res.json({
+            success: true,
+            date: checkin,
+            properties: data.properties || [],
+            search_metadata: data.search_metadata
+        });
 
     } catch (error) {
-        console.error('Proxy error:', error);
-        res.status(500).json({ error: 'Failed to fetch hotel data', message: error.message });
+        console.error('Proxy error:', error.message);
+        res.status(500).json({ error: error.message });
     }
 });
 
-// Proxy endpoint for account status
+/**
+ * Check API credits/account status
+ * GET /api/account
+ */
 app.get('/api/account', async (req, res) => {
-    if (!API_KEY) {
-        return res.status(500).json({ error: 'API key not configured on server' });
+    if (!SERPAPI_KEY) {
+        return res.status(500).json({ error: 'API key not configured' });
     }
 
     try {
-        const url = `https://api.makcorps.com/account?api_key=${API_KEY}`;
+        // SerpAPI account info endpoint
+        const url = `https://serpapi.com/account.json?api_key=${SERPAPI_KEY}`;
         const response = await fetch(url);
         const data = await response.json();
-        res.status(response.status).json(data);
+
+        if (data.error) {
+            return res.status(400).json({ error: data.error });
+        }
+
+        res.json({
+            success: true,
+            plan: data.plan_name || 'Free',
+            searchesPerMonth: data.total_searches_left !== undefined 
+                ? data.total_searches_left + (data.this_month_usage || 0)
+                : 100,
+            searchesUsed: data.this_month_usage || 0,
+            searchesRemaining: data.total_searches_left || data.plan_searches_left || 0,
+            accountEmail: data.account_email || 'N/A'
+        });
+
     } catch (error) {
-        console.error('Account check error:', error);
-        res.status(500).json({ error: 'Failed to check account', message: error.message });
+        console.error('Account check error:', error.message);
+        res.status(500).json({ error: error.message });
     }
 });
 
+// Start server
 app.listen(PORT, () => {
-    console.log(`🏨 Mackinaw Intel Proxy running on port ${PORT}`);
-    console.log(`API Key configured: ${API_KEY ? 'Yes ✓' : 'No ✗ (set MAKCORPS_API_KEY env var)'}`);
+    console.log(`🏨 Mackinaw Intel Proxy (SerpAPI) running on port ${PORT}`);
+    console.log(`API Key configured: ${SERPAPI_KEY ? 'Yes ✓' : 'No ✗'}`);
 });
