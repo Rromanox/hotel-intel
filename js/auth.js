@@ -170,13 +170,26 @@ const Auth = {
         const appContainer = document.getElementById('app-container');
         const loadingOverlay = document.getElementById('loading-overlay');
         
+        // Hide login screen
         if (loginScreen) loginScreen.classList.add('hidden');
-        if (appContainer) appContainer.style.display = '';
-        if (loadingOverlay) loadingOverlay.classList.remove('hidden');
         
-        // Initialize the app
+        // Show app container
+        if (appContainer) appContainer.style.display = '';
+        
+        // Initialize the app if not already done
         if (typeof App !== 'undefined' && !App.isInitialized) {
+            // Show loading while initializing
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.style.display = 'flex';
+            }
             App.init();
+        } else {
+            // Already initialized, make sure loading is hidden
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.style.display = 'none';
+            }
         }
     },
 

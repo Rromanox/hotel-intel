@@ -493,7 +493,10 @@ const UI = {
      * Hide loading overlay
      */
     hideLoading() {
-        this.elements.loadingOverlay.classList.add('hidden');
+        if (this.elements.loadingOverlay) {
+            this.elements.loadingOverlay.classList.add('hidden');
+            this.elements.loadingOverlay.style.display = 'none';
+        }
     },
 
     /**
