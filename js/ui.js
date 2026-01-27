@@ -184,8 +184,17 @@ const UI = {
      */
     bindEvents() {
         // Mobile menu toggle
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        
         this.elements.mobileMenuToggle?.addEventListener('click', () => {
             this.elements.sidebar.classList.toggle('open');
+            sidebarOverlay?.classList.toggle('active');
+        });
+        
+        // Close sidebar when clicking overlay
+        sidebarOverlay?.addEventListener('click', () => {
+            this.elements.sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
         });
 
         // Navigation
@@ -194,6 +203,9 @@ const UI = {
                 e.preventDefault();
                 const page = item.dataset.page;
                 this.navigateTo(page);
+                // Close mobile sidebar after navigation
+                this.elements.sidebar.classList.remove('open');
+                sidebarOverlay?.classList.remove('active');
             });
         });
 
