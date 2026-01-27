@@ -45,24 +45,24 @@ const CONFIG = {
     },
 
     // ===========================================
-    // YOUR DIRECT COMPETITORS (13)
+    // YOUR DIRECT COMPETITORS (13 - based on actual API data)
     // ===========================================
     trackedCompetitors: [
-        // Original 5
-        'Super 8',           // Super 8 Bridgeview
-        'Vindel',            // The Vindel Motel
-        'Lighthouse View',   // Lighthouse View Motel  
-        'Parkside Inn',      // The Parkside Inn
-        'Rainbow',           // The Rainbow Motel
-        // Added 8 more
-        'Days Inn',          // Days Inn
-        'Comfort Inn',       // Comfort Inn
-        'Quality Inn',       // Quality Inn
-        'Baymont',           // Baymont Inn
-        'Holiday Inn',       // Holiday Inn Express
-        'Hampton Inn',       // Hampton Inn
-        'Econo Lodge',       // Econo Lodge
-        'America\'s Best'    // America's Best Value Inn
+        // Original competitors
+        'Super 8',           // "Super 8 by Wyndham Bridgeview of Mackinaw City"
+        'Vindel',            // "Vindel Motel"
+        'Lighthouse View',   // "Lighthouse View Motel"  
+        'Parkside',          // "Parkside Inn - Bridgeside"
+        // Chain competitors (confirmed in API)
+        'Days Inn',          // "Days Inn by Wyndham Mackinaw City - Lakeview"
+        'Comfort Inn',       // "Comfort Inn Lakeside"
+        'Quality Inn',       // "Quality Inn & Suites Beachfront"
+        'Baymont',           // "Baymont By Wyndham Mackinaw City"
+        'Holiday Inn',       // "Holiday Inn Express Mackinaw City by IHG"
+        'Clarion',           // "Clarion Hotel Beachfront"
+        'Best Western',      // "Best Western Plus Dockside Waterfront Inn"
+        'Thunderbird',       // "Thunderbird Inn"
+        'Clearwater'         // "Clearwater Lakeshore Motel"
     ],
 
     // Update Settings

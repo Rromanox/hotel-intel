@@ -197,7 +197,8 @@ const API = {
                 const response = await fetch(url);
                 this.callsThisSession++;
                 
-                if (response.status === 403) {
+                // Handle rate limiting
+                if (response.status === 403 || response.status === 429) {
                     throw new Error('API_LIMIT_REACHED');
                 }
                 
@@ -211,10 +212,18 @@ const API = {
 
                 const data = await response.json();
                 
+                // Check for error response
+                if (data.success === false) {
+                    console.error('API returned error:', data.message);
+                    throw new Error('API_LIMIT_REACHED');
+                }
+                
                 if (!Array.isArray(data) || data.length === 0) {
                     hasMorePages = false;
                     break;
                 }
+
+                console.log(`📥 API returned ${data.length} hotels for ${checkinDate}`);
 
                 // Check for pagination info (last item in array)
                 const lastItem = data[data.length - 1];
@@ -227,13 +236,17 @@ const API = {
                 // Process hotel data
                 const hotelsData = paginationInfo ? data.slice(0, -1) : data;
                 
+                let matchedCount = 0;
                 for (const item of hotelsData) {
                     if (Array.isArray(item)) continue;
                     const hotel = this.extractHotelData(item);
                     if (hotel) {
                         allHotels.push(hotel);
+                        matchedCount++;
                     }
                 }
+                
+                console.log(`✅ Matched ${matchedCount} tracked hotels for ${checkinDate}`);
 
                 // Check if there are more pages
                 if (fullFetch && paginationInfo) {
