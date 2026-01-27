@@ -245,6 +245,50 @@ app.post('/api/rates/bulk', async (req, res) => {
 });
 
 /**
+ * Get database summary - list all dates and counts
+ * GET /api/rates/summary
+ * NOTE: This must come BEFORE /api/rates/:date to avoid matching "summary" as a date
+ */
+app.get('/api/rates/summary', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    try {
+        // Get all dates with hotel counts
+        const data = await ratesCollection.find({}, { 
+            projection: { date: 1, 'hotels': 1, updatedAt: 1 } 
+        }).sort({ date: 1 }).toArray();
+        
+        // Group by month
+        const byMonth = {};
+        data.forEach(item => {
+            const month = item.date.substring(0, 7); // "2026-05"
+            if (!byMonth[month]) {
+                byMonth[month] = { dates: [], totalHotels: 0 };
+            }
+            byMonth[month].dates.push({
+                date: item.date,
+                hotelCount: item.hotels?.length || 0,
+                updatedAt: item.updatedAt
+            });
+            byMonth[month].totalHotels += item.hotels?.length || 0;
+        });
+
+        res.json({ 
+            success: true, 
+            totalDates: data.length,
+            byMonth,
+            allDates: data.map(d => d.date)
+        });
+
+    } catch (error) {
+        console.error('Summary error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * Get rate data for a specific date
  * GET /api/rates/:date
  */
@@ -333,49 +377,6 @@ app.delete('/api/rates/:date', async (req, res) => {
 
     } catch (error) {
         console.error('Delete error:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-/**
- * Get database summary - list all dates and counts
- * GET /api/rates/summary
- */
-app.get('/api/rates/summary', async (req, res) => {
-    if (!ratesCollection) {
-        return res.status(503).json({ error: 'Database not available' });
-    }
-
-    try {
-        // Get all dates with hotel counts
-        const data = await ratesCollection.find({}, { 
-            projection: { date: 1, 'hotels': 1, updatedAt: 1 } 
-        }).sort({ date: 1 }).toArray();
-        
-        // Group by month
-        const byMonth = {};
-        data.forEach(item => {
-            const month = item.date.substring(0, 7); // "2026-05"
-            if (!byMonth[month]) {
-                byMonth[month] = { dates: [], totalHotels: 0 };
-            }
-            byMonth[month].dates.push({
-                date: item.date,
-                hotelCount: item.hotels?.length || 0,
-                updatedAt: item.updatedAt
-            });
-            byMonth[month].totalHotels += item.hotels?.length || 0;
-        });
-
-        res.json({ 
-            success: true, 
-            totalDates: data.length,
-            byMonth,
-            allDates: data.map(d => d.date)
-        });
-
-    } catch (error) {
-        console.error('Summary error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });

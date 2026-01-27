@@ -2474,18 +2474,38 @@ const UI = {
             return CONFIG.hotelCoordinates[hotelName];
         }
         
-        // Try partial match
+        // Try partial match - check if hotel name contains or is contained in config keys
         const nameLower = hotelName.toLowerCase();
         for (const [name, coords] of Object.entries(CONFIG.hotelCoordinates)) {
-            if (nameLower.includes(name.toLowerCase()) || name.toLowerCase().includes(nameLower)) {
+            const configNameLower = name.toLowerCase();
+            // Check various matching strategies
+            if (nameLower.includes(configNameLower) || 
+                configNameLower.includes(nameLower) ||
+                nameLower.split(' ').some(word => word.length > 3 && configNameLower.includes(word)) ||
+                configNameLower.split(' ').some(word => word.length > 3 && nameLower.includes(word))) {
                 return coords;
+            }
+        }
+        
+        // Try matching key words
+        const keywords = ['super 8', 'days inn', 'comfort inn', 'quality inn', 'best western', 
+                         'holiday inn', 'clarion', 'ramada', 'baymont', 'hamilton', 'lighthouse',
+                         'bridge vista', 'bayside', 'clearwater', 'crown', 'apple blossom',
+                         'american boutique', 'riviera'];
+        for (const keyword of keywords) {
+            if (nameLower.includes(keyword)) {
+                for (const [name, coords] of Object.entries(CONFIG.hotelCoordinates)) {
+                    if (name.toLowerCase().includes(keyword)) {
+                        return coords;
+                    }
+                }
             }
         }
         
         // Generate approximate coordinates if not found (spread around center)
         const baseCoords = CONFIG.map.center;
-        const offset = (Math.random() - 0.5) * 0.01;
-        return [baseCoords[0] + offset, baseCoords[1] + offset];
+        const randomOffset = () => (Math.random() - 0.5) * 0.008;
+        return [baseCoords[0] + randomOffset(), baseCoords[1] + randomOffset()];
     },
 
     /**

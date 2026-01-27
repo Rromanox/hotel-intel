@@ -31,39 +31,60 @@ const CONFIG = {
 
     // Map settings - Mackinaw City center
     map: {
-        center: [45.7856, -84.7273],
-        zoom: 14
+        center: [45.7833, -84.7278],
+        zoom: 15
     },
 
     // ===========================================
-    // HOTEL COORDINATES (approximate locations in Mackinaw City)
+    // HOTEL COORDINATES (GPS locations in Mackinaw City)
+    // Based on actual addresses on North/South Huron Ave
     // ===========================================
     hotelCoordinates: {
         // Your Hotels
-        'Riviera Motel': [45.7851, -84.7301],
-        'American Boutique Inn': [45.7867, -84.7285],
+        'Riviera Motel': [45.7789, -84.7271],  // South Huron area
+        'American Boutique Inn': [45.7862, -84.7274],  // 517 N Huron
+        'American Boutique Inn - Lakeview': [45.7862, -84.7274],
         
-        // Competitors (approximate locations along main strip)
-        'Super 8 by Wyndham Mackinaw City/Beachfront Area': [45.7849, -84.7265],
-        'Super 8 by Wyndham Bridgeview of Mackinaw City': [45.7862, -84.7312],
-        'Lighthouse View Motel': [45.7873, -84.7258],
-        'Days Inn by Wyndham Mackinaw City - Lakeview': [45.7858, -84.7245],
-        'Comfort Inn Lakeside': [45.7845, -84.7288],
-        'Quality Inn & Suites Mackinaw City Beachfront': [45.7839, -84.7271],
-        'Baymont by Wyndham Mackinaw City': [45.7876, -84.7295],
-        'Holiday Inn Express Mackinaw City by IHG': [45.7882, -84.7267],
-        'Clarion Hotel Mackinaw City Beachfront': [45.7835, -84.7252],
-        'Best Western Plus Dockside Waterfront Inn': [45.7869, -84.7233],
-        'Clearwater Lakeshore Motel': [45.7854, -84.7218],
-        'Ramada by Wyndham Mackinaw City Waterfront': [45.7843, -84.7205],
-        'Bridge Vista Beach Hotel & Convention Center': [45.7889, -84.7245],
-        'Bayside Hotel of Mackinac': [45.7831, -84.7298],
-        'Hamilton Inn': [45.7864, -84.7275],
-        'Bridgeview Motel': [45.7871, -84.7308],
-        'Crown Choice Inn': [45.7847, -84.7282],
-        'Apple Blossom Inn': [45.7859, -84.7291],
+        // Hotels along North Huron Avenue (north to south)
+        'Lighthouse View Motel': [45.7887, -84.7269],  // 699 N Huron
+        'Bridge Vista Beach Hotel': [45.7878, -84.7267],
+        'Bridge Vista Beach Hotel & Convention Center': [45.7878, -84.7267],
+        'Holiday Inn Express': [45.7870, -84.7265],
+        'Holiday Inn Express Mackinaw City': [45.7870, -84.7265],
+        'Parkside Inn Bridgeview': [45.7858, -84.7272],
+        'Super 8 by Wyndham Bridgeview of Mackinaw City': [45.7855, -84.7273],
+        'Baymont by Wyndham Mackinaw City': [45.7845, -84.7285],  // 109 N Nicolet
+        
+        // Hotels along South Huron Avenue  
+        'Best Western Plus Dockside Waterfront Inn': [45.7808, -84.7268],  // 505 S Huron
+        'Best Western Harbour Pointe Lakefront': [45.7805, -84.7265],
+        'Ramada by Wyndham Mackinaw City Waterfront': [45.7795, -84.7262],
+        'Clarion Hotel Beachfront': [45.7785, -84.7258],
+        'Clarion Hotel Mackinaw City Beachfront': [45.7785, -84.7258],
+        'Quality Inn & Suites Beachfront': [45.7775, -84.7255],
+        'Quality Inn & Suites Mackinaw City Beachfront': [45.7775, -84.7255],
+        
+        // Hotels near Central Ave / Louvigny
+        'Comfort Inn Lakeside': [45.7838, -84.7295],
+        'Days Inn by Wyndham Mackinaw City - Lakeview': [45.7842, -84.7302],
+        'Super 8 by Wyndham Mackinaw City/Beachfront Area': [45.7765, -84.7252],
+        
+        // Other hotels in area
+        'Bayside Hotel of Mackinac': [45.7820, -84.7275],
+        'Hamilton Inn Select Beachfront': [45.7812, -84.7270],
+        'Hamilton Inn': [45.7812, -84.7270],
+        'Crown Choice Inn & Suites': [45.7835, -84.7290],
+        'Crown Choice Inn': [45.7835, -84.7290],
+        'Apple Blossom Boutique': [45.7848, -84.7280],
+        'Clearwater Lakeshore Motel': [45.7802, -84.7263],
+        'Bridgeview Motel': [45.7852, -84.7275],
+        
+        // St. Ignace hotels (across the bridge - will show at edge of map)
         'Voyager Inn of Saint Ignace': [45.8667, -84.7267],
-        'Cedar Hill Lodge': [45.7878, -84.7255]
+        'Days Inn St. Ignace': [45.8655, -84.7260],
+        
+        // Fallback for Cedar Hill
+        'Cedar Hill Lodge': [45.7830, -84.7288]
     },
 
     // ===========================================
