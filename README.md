@@ -2,21 +2,6 @@
 
 A professional hotel rate monitoring dashboard for Mackinaw City. Track your properties and competitors with real-time pricing data.
 
-## 🏨 Tracked Hotels (7 Total)
-
-### Your Properties
-- **Riviera Motel** (ID: 1162889)
-- **American Boutique Inn** (ID: 564648)
-
-### Competitors
-- Super 8 Bridgeview
-- Vindel Motel
-- Lighthouse View Motel
-- Parkside Inn
-- Rainbow Motel
-
----
-
 ## 🚀 Quick Start
 
 ### Option 1: GitHub Pages (Frontend Only)
