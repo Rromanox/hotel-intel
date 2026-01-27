@@ -1,17 +1,19 @@
 /**
  * Mackinaw Intel - API Module
  * Handles MakCorp API integration for hotel data collection
+ * 
+ * API Documentation: https://docs.makcorps.com/hotel-price-apis/hotel-api-search-by-city-id
  */
 
 const API = {
     /**
      * Build the API URL for a specific check-in date
      */
-    buildUrl(checkinDate, checkoutDate) {
+    buildUrl(checkinDate, checkoutDate, pagination = 0) {
         const params = new URLSearchParams({
             api_key: CONFIG.api.apiKey,
             cityid: CONFIG.api.cityId,
-            pagination: CONFIG.api.params.pagination,
+            pagination: pagination.toString(),
             cur: CONFIG.api.params.cur,
             rooms: CONFIG.api.params.rooms,
             adults: CONFIG.api.params.adults,
@@ -32,23 +34,45 @@ const API = {
     },
 
     /**
-     * Fetch hotel data for a specific date
+     * Fetch hotel data for a specific date (all pages)
      */
     async fetchDateData(checkinDate, progressCallback = null) {
         const checkoutDate = this.getCheckoutDate(checkinDate);
-        const url = this.buildUrl(checkinDate, checkoutDate);
+        let allHotels = [];
+        let currentPage = 0;
+        let totalPages = 1;
 
         try {
-            const response = await fetch(url);
+            // Fetch first page to get total count
+            const firstPageData = await this.fetchPage(checkinDate, checkoutDate, 0);
             
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
+            if (firstPageData.hotels.length > 0) {
+                allHotels = firstPageData.hotels;
+                totalPages = firstPageData.totalPages || 1;
             }
 
-            const data = await response.json();
-            
-            // Parse and normalize the response
-            return this.parseResponse(data, checkinDate);
+            // Fetch remaining pages if more than 30 hotels
+            for (let page = 1; page < totalPages && page < 10; page++) { // Cap at 10 pages (~300 hotels)
+                await this.delay(300); // Rate limiting
+                const pageData = await this.fetchPage(checkinDate, checkoutDate, page);
+                if (pageData.hotels.length > 0) {
+                    allHotels = allHotels.concat(pageData.hotels);
+                }
+            }
+
+            // Sort all hotels by lowest price
+            allHotels.sort((a, b) => {
+                if (!a.price) return 1;
+                if (!b.price) return -1;
+                return a.price - b.price;
+            });
+
+            return {
+                timestamp: new Date().toISOString(),
+                date: checkinDate,
+                hotels: allHotels,
+                totalHotels: allHotels.length
+            };
 
         } catch (error) {
             console.error(`Error fetching data for ${checkinDate}:`, error);
@@ -57,103 +81,138 @@ const API = {
     },
 
     /**
+     * Fetch a single page of results
+     */
+    async fetchPage(checkinDate, checkoutDate, pagination) {
+        const url = this.buildUrl(checkinDate, checkoutDate, pagination);
+
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return this.parseResponse(data, checkinDate);
+    },
+
+    /**
      * Parse API response and normalize hotel data
+     * 
+     * MakCorps returns an array where:
+     * - Most items are hotel objects with vendor1/price1, vendor2/price2, etc.
+     * - The last item is an array with pagination info
      */
     parseResponse(apiResponse, checkinDate) {
         const hotels = [];
-        
-        // The API returns an array of hotels
+        let totalPages = 1;
+        let totalHotels = 0;
+
         if (!apiResponse || !Array.isArray(apiResponse)) {
             console.warn('Unexpected API response format:', apiResponse);
-            return { timestamp: new Date().toISOString(), date: checkinDate, hotels: [] };
+            return { hotels: [], totalPages: 1 };
         }
 
         apiResponse.forEach(item => {
-            // Each item should have hotel info
+            // Check if this is the pagination info array
+            if (Array.isArray(item) && item.length > 0 && item[0].totalHotelCount !== undefined) {
+                totalHotels = item[0].totalHotelCount || 0;
+                totalPages = item[0].totalpageCount || 1;
+                return;
+            }
+
+            // Parse hotel data
             const hotel = this.extractHotelData(item);
             if (hotel) {
                 hotels.push(hotel);
             }
         });
 
-        // Sort by price
-        hotels.sort((a, b) => {
-            if (!a.price) return 1;
-            if (!b.price) return -1;
-            return a.price - b.price;
-        });
-
-        return {
-            timestamp: new Date().toISOString(),
-            date: checkinDate,
-            hotels: hotels
-        };
+        return { hotels, totalPages, totalHotels };
     },
 
     /**
      * Extract hotel data from API response item
+     * 
+     * MakCorps format:
+     * {
+     *   name: "Hotel Name",
+     *   hotelId: 12345,
+     *   telephone: "+1 555-555-5555",
+     *   geocode: { latitude: 45.786, longitude: -84.727 },
+     *   reviews: { rating: 4.5, count: 1234 },
+     *   vendor1: "Booking.com",
+     *   price1: "$215",
+     *   vendor2: "Expedia",
+     *   price2: "$220",
+     *   ...
+     * }
      */
     extractHotelData(item) {
-        if (!item) return null;
+        if (!item || typeof item !== 'object') return null;
+        if (!item.name) return null;
 
-        // Handle different API response structures
-        const hotel = {
-            name: item.name || item.hotelName || item.hotel_name || null,
-            hotelId: item.hotelId || item.hotel_id || item.id || null,
-            price: null,
-            vendor: null,
-            rating: item.rating || item.stars || null,
-            reviewCount: item.reviewCount || item.review_count || item.reviews || null,
-            coordinates: null,
-            phone: item.phone || null,
-            address: item.address || null,
-            amenities: item.amenities || []
-        };
+        // Find the lowest price among all vendors (up to 4)
+        let lowestPrice = null;
+        let lowestVendor = null;
+        let allPrices = [];
 
-        // Extract price from various possible structures
-        if (item.price1) {
-            hotel.price = this.parsePrice(item.price1);
-            hotel.vendor = item.vendor1 || 'Unknown';
-        } else if (item.price) {
-            hotel.price = this.parsePrice(item.price);
-            hotel.vendor = item.vendor || 'Unknown';
-        } else if (item.rates && Array.isArray(item.rates) && item.rates.length > 0) {
-            // Find lowest rate
-            const rates = item.rates
-                .map(r => ({ price: this.parsePrice(r.price || r.rate), vendor: r.vendor || r.source }))
-                .filter(r => r.price && r.price > 0)
-                .sort((a, b) => a.price - b.price);
+        for (let i = 1; i <= 4; i++) {
+            const vendorKey = `vendor${i}`;
+            const priceKey = `price${i}`;
             
-            if (rates.length > 0) {
-                hotel.price = rates[0].price;
-                hotel.vendor = rates[0].vendor;
+            if (item[vendorKey] && item[priceKey]) {
+                const price = this.parsePrice(item[priceKey]);
+                if (price && price > 0) {
+                    allPrices.push({ vendor: item[vendorKey], price });
+                    
+                    if (lowestPrice === null || price < lowestPrice) {
+                        lowestPrice = price;
+                        lowestVendor = item[vendorKey];
+                    }
+                }
             }
         }
 
-        // Extract coordinates
-        if (item.coordinates) {
-            hotel.coordinates = item.coordinates;
-        } else if (item.latitude && item.longitude) {
-            hotel.coordinates = [item.latitude, item.longitude];
-        } else if (item.geo) {
-            hotel.coordinates = [item.geo.lat, item.geo.lon];
-        }
-
-        // Skip hotels without name or price
-        if (!hotel.name || !hotel.price) {
+        // Skip hotels without any price
+        if (lowestPrice === null) {
             return null;
         }
 
-        return hotel;
+        // Extract coordinates
+        let coordinates = null;
+        if (item.geocode) {
+            coordinates = [item.geocode.latitude, item.geocode.longitude];
+        }
+
+        // Extract reviews
+        let rating = null;
+        let reviewCount = null;
+        if (item.reviews) {
+            rating = item.reviews.rating || null;
+            reviewCount = item.reviews.count || null;
+        }
+
+        return {
+            name: item.name,
+            hotelId: item.hotelId,
+            price: lowestPrice,
+            vendor: lowestVendor,
+            allPrices: allPrices, // Keep all vendor prices for comparison
+            rating: rating,
+            reviewCount: reviewCount,
+            coordinates: coordinates,
+            phone: item.telephone || null
+        };
     },
 
     /**
-     * Parse price from various formats
+     * Parse price from string format like "$215" or "€180"
      */
     parsePrice(priceValue) {
         if (typeof priceValue === 'number') return priceValue;
         if (typeof priceValue === 'string') {
-            // Remove currency symbols and parse
+            // Remove currency symbols, commas, and spaces
             const cleaned = priceValue.replace(/[^0-9.]/g, '');
             const parsed = parseFloat(cleaned);
             return isNaN(parsed) ? null : parsed;
@@ -185,9 +244,9 @@ const API = {
                     });
                 }
 
-                // Rate limiting - wait between requests
+                // Rate limiting - wait between date requests
                 if (completed < total) {
-                    await this.delay(500); // 500ms between requests
+                    await this.delay(800); // 800ms between dates
                 }
 
             } catch (error) {
@@ -246,6 +305,7 @@ const API = {
         Object.assign(existingData.dates, results);
         existingData.lastFullUpdate = new Date().toISOString();
         existingData.totalHotels = this.countUniqueHotels(existingData.dates);
+        existingData.isDemo = false; // Mark as real data
 
         Storage.saveData(existingData);
         Storage.setLastUpdate();
@@ -288,11 +348,11 @@ const API = {
      */
     async testConnection() {
         try {
-            const testDate = formatDateForAPI(new Date());
+            const testDate = formatDateForAPI(new Date(2026, 4, 15)); // May 15, 2026
             const checkoutDate = this.getCheckoutDate(testDate);
-            const url = this.buildUrl(testDate, checkoutDate);
+            const url = this.buildUrl(testDate, checkoutDate, 0);
 
-            const response = await fetch(url, { method: 'HEAD' });
+            const response = await fetch(url);
             return response.ok;
         } catch (error) {
             console.error('API connection test failed:', error);
@@ -301,23 +361,26 @@ const API = {
     }
 };
 
-// Demo data generator for testing when API is unavailable
+/**
+ * Demo data generator for testing when API is unavailable
+ * Generates realistic data matching MakCorps response patterns
+ */
 const DemoData = {
     hotelNames: [
         'Riviera Motel',
         'American Boutique Inn',
-        'Mackinaw Beach Hotel',
-        'Bridge View Lodge',
-        'Northern Lights Inn',
-        'Lakefront Resort',
-        'Captain\'s Quarters',
+        'Mackinaw Beach & Dive Resort',
+        'Bridge View Inn',
+        'Northern Lights Motel',
+        'Lakefront Resort & Suites',
+        'Captains Quarters Motel',
         'Historic Mackinaw Hotel',
         'Pine Grove Motel',
         'Waterfront Suites',
         'Sunset Bay Resort',
         'Colonial House Inn',
         'Mackinaw Motor Lodge',
-        'Parkview Inn',
+        'Parkview Inn & Suites',
         'Harbor Springs Hotel',
         'Straits Area Resort',
         'Wilderness Lodge',
@@ -333,44 +396,82 @@ const DemoData = {
         'Quality Inn Lakeside',
         'Days Inn Mackinaw',
         'Super 8 Bridge View',
-        'Holiday Inn Express',
-        'Hampton Inn Mackinaw',
+        'Holiday Inn Express Mackinaw',
+        'Hampton Inn Mackinaw City',
         'Best Western Lakefront',
-        'Ramada by Wyndham',
-        'Fairfield Inn Mackinaw',
-        'Courtyard by Marriott',
-        'SpringHill Suites',
-        'Baymont Inn',
+        'Ramada by Wyndham Mackinaw',
+        'Fairfield Inn & Suites',
+        'Courtyard Mackinaw City',
+        'SpringHill Suites Mackinaw',
+        'Baymont Inn & Suites',
         'La Quinta Inn',
         'Sleep Inn & Suites',
-        'Country Inn & Suites'
+        'Country Inn & Suites',
+        'Econo Lodge Lakeview',
+        'Rodeway Inn',
+        'Travelodge Mackinaw',
+        'Americas Best Value Inn',
+        'Knights Inn',
+        'Clearwater Lakeshore Motel',
+        'Beachcomber Motel',
+        'Chippewa Motor Lodge',
+        'North Country Inn',
+        'Mackinac Lakefront Cabins',
+        'Thunderbird Inn',
+        'Chief Motel',
+        'Nor Gate Motel',
+        'Star Lite Motel',
+        'Bella Vista Motel',
+        'Paradise Bay Motel',
+        'Great Lakes Inn',
+        'Voyageur Motel',
+        'Cedarville Inn',
+        'Straits Lodge',
+        'Hamilton Inn',
+        'Huron Motor Lodge',
+        'Mackinac Crossings Resort',
+        'Brigadoon B&B'
     ],
 
-    vendors: ['Booking.com', 'Expedia', 'Hotels.com', 'Priceline', 'Agoda', 'Direct'],
+    vendors: ['Booking.com', 'Expedia', 'Hotels.com', 'Priceline', 'Agoda', 'Trip.com', 'Direct'],
 
     generateHotelData(date, basePrice = 85) {
         const hotels = [];
         const usedNames = new Set();
-        const numHotels = 40 + Math.floor(Math.random() * 25); // 40-64 hotels
+        const numHotels = 45 + Math.floor(Math.random() * 20); // 45-64 hotels
 
-        // Always include your hotels first
+        // Determine day of week for weekend pricing
+        const dayOfWeek = new Date(date + 'T00:00:00').getDay();
+        const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; // Friday or Saturday
+
+        // Always include your hotels first with consistent positioning
         const yourHotelNames = Object.keys(CONFIG.yourHotels);
         yourHotelNames.forEach((name, index) => {
-            const baseRate = basePrice + (Math.random() * 30) - 15;
-            const dayVariance = (new Date(date).getDay() >= 5 ? 15 : 0); // Weekend bump
+            const baseRate = basePrice + (index * 5); // Slight difference between your properties
+            const weekendBump = isWeekend ? 20 : 0;
+            const variance = (Math.random() - 0.5) * 15;
+            
+            const price = Math.round(baseRate + weekendBump + variance);
             
             hotels.push({
                 name: name,
                 hotelId: CONFIG.yourHotels[name].id,
-                price: Math.round(baseRate + dayVariance + (Math.random() * 20)),
+                price: price,
                 vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-                rating: 3.5 + Math.random() * 1.5,
-                reviewCount: 150 + Math.floor(Math.random() * 400)
+                allPrices: [
+                    { vendor: 'Booking.com', price: price },
+                    { vendor: 'Expedia', price: price + Math.round(Math.random() * 10) },
+                    { vendor: 'Hotels.com', price: price + Math.round(Math.random() * 15) }
+                ],
+                rating: 3.8 + Math.random() * 0.7,
+                reviewCount: 200 + Math.floor(Math.random() * 350),
+                coordinates: [45.786095 + (Math.random() - 0.5) * 0.01, -84.72728 + (Math.random() - 0.5) * 0.01],
+                phone: '+1 231-436-' + String(5000 + Math.floor(Math.random() * 5000)).padStart(4, '0')
             });
             usedNames.add(name);
         });
 
-        // Generate remaining hotels
+        // Generate remaining hotels with varied pricing
         for (let i = hotels.length; i < numHotels; i++) {
             let name;
             do {
@@ -379,17 +480,33 @@ const DemoData = {
             
             usedNames.add(name);
 
-            const variance = (Math.random() - 0.5) * 100;
-            const dayVariance = (new Date(date).getDay() >= 5 ? 20 : 0);
-            const price = Math.round(basePrice + variance + dayVariance);
+            // Create price variance - some budget, some premium
+            const tierRandom = Math.random();
+            let priceMultiplier;
+            if (tierRandom < 0.25) {
+                priceMultiplier = 0.6 + Math.random() * 0.2; // Budget tier
+            } else if (tierRandom < 0.75) {
+                priceMultiplier = 0.85 + Math.random() * 0.3; // Mid tier
+            } else {
+                priceMultiplier = 1.2 + Math.random() * 0.5; // Premium tier
+            }
+
+            const weekendBump = isWeekend ? 15 + Math.random() * 15 : 0;
+            const price = Math.round(basePrice * priceMultiplier + weekendBump);
 
             hotels.push({
                 name: name,
-                hotelId: 100000 + i,
-                price: Math.max(45, price), // Minimum $45
+                hotelId: 1000000 + i + Math.floor(Math.random() * 100000),
+                price: Math.max(49, price), // Minimum $49
                 vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
+                allPrices: [
+                    { vendor: 'Booking.com', price: Math.max(49, price) },
+                    { vendor: 'Expedia', price: Math.max(49, price + Math.round((Math.random() - 0.3) * 15)) }
+                ],
                 rating: 2.5 + Math.random() * 2.5,
-                reviewCount: 10 + Math.floor(Math.random() * 500)
+                reviewCount: 10 + Math.floor(Math.random() * 600),
+                coordinates: [45.786095 + (Math.random() - 0.5) * 0.03, -84.72728 + (Math.random() - 0.5) * 0.03],
+                phone: '+1 231-436-' + String(1000 + Math.floor(Math.random() * 9000)).padStart(4, '0')
             });
         }
 
@@ -399,7 +516,8 @@ const DemoData = {
         return {
             timestamp: new Date().toISOString(),
             date: date,
-            hotels: hotels
+            hotels: hotels,
+            totalHotels: hotels.length
         };
     },
 
@@ -409,11 +527,11 @@ const DemoData = {
 
         // Base price varies by month (peak season = higher)
         const monthPrices = {
-            5: 85,   // May
-            6: 110,  // June
-            7: 135,  // July (peak)
-            8: 130,  // August
-            9: 95    // September
+            5: 89,    // May - shoulder season
+            6: 119,   // June - busy
+            7: 145,   // July - peak
+            8: 139,   // August - peak
+            9: 99     // September - shoulder
         };
 
         const basePrice = monthPrices[month] || 100;
