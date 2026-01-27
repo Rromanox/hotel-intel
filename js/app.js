@@ -15,40 +15,39 @@ const App = {
         console.log('🏨 Mackinaw Intel - Initializing...');
 
         try {
-            // Initialize UI first
-            UI.init();
+            // Initialize Charts first (no DOM dependency)
             Charts.init();
+            console.log('✓ Charts initialized');
 
-            // Check for existing data
-            const existingData = Storage.loadData();
-            
-            if (existingData && existingData.dates && Object.keys(existingData.dates).length > 0) {
-                console.log('📊 Found existing data, loading...');
-                this.loadExistingData();
-            } else {
-                console.log('🆕 No existing data, generating demo data...');
-                await this.loadDemoData();
-            }
+            // Initialize UI
+            UI.init();
+            console.log('✓ UI initialized');
 
-            // Check if update is due
-            if (Storage.isUpdateDue()) {
-                console.log('⏰ Update is due, prompting user...');
-                // Don't auto-update, just show a notification
-                setTimeout(() => {
-                    UI.showToast('Rate data may be outdated. Click "Update Data" to refresh.', 'info');
-                }, 2000);
-            }
+            // Generate and load demo data
+            console.log('🆕 Generating demo data...');
+            const demoData = DemoData.generateAllData();
+            Storage.saveData(demoData);
+            Storage.setLastUpdate();
+            console.log('✓ Demo data generated');
+
+            // Load the data into UI
+            this.loadExistingData();
+            console.log('✓ Data loaded into UI');
 
             this.isInitialized = true;
             console.log('✅ Mackinaw Intel - Ready!');
 
             // Hide loading overlay
-            setTimeout(() => UI.hideLoading(), 500);
+            UI.hideLoading();
 
         } catch (error) {
             console.error('❌ Initialization error:', error);
-            UI.showToast('Error initializing application', 'error');
-            UI.hideLoading();
+            // Still try to hide loading even on error
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+            }
+            alert('Error initializing: ' + error.message);
         }
     },
 
@@ -57,6 +56,10 @@ const App = {
      */
     loadExistingData() {
         const data = Storage.loadData();
+        if (!data || !data.dates) {
+            console.warn('No data available');
+            return;
+        }
         
         // Populate date selector
         UI.populateDateSelector();
@@ -66,6 +69,11 @@ const App = {
 
         // Get the most recent date with data
         const dates = Object.keys(data.dates).sort();
+        if (dates.length === 0) {
+            console.warn('No dates in data');
+            return;
+        }
+        
         const latestDate = dates[dates.length - 1];
 
         // Determine which month to show initially
@@ -78,10 +86,10 @@ const App = {
         // Update settings page
         UI.updateSettingsPage();
 
-        // Show demo data notice if applicable
+        // Show demo data notice
         if (data.isDemo) {
             setTimeout(() => {
-                UI.showToast('Viewing demo data. Real API data requires network access.', 'info');
+                UI.showToast('Viewing demo data. Click "Update Data" for real rates.', 'info');
             }, 1000);
         }
     },
@@ -131,17 +139,9 @@ const App = {
             UI.hideUpdateModal();
             
             // Fall back to demo data
-            UI.showToast('API unavailable. Loading demo data instead.', 'info');
+            UI.showToast('API unavailable. Using demo data.', 'info');
             await this.loadDemoData();
         }
-    },
-
-    /**
-     * Export current view as PDF (simplified version)
-     */
-    exportPDF() {
-        // This would typically use a library like jsPDF or html2pdf
-        UI.showToast('PDF export coming soon!', 'info');
     },
 
     /**
@@ -213,7 +213,6 @@ const App = {
         const data = Storage.loadData();
         if (!data || !data.dates || !data.dates[dateStr]) return null;
 
-        const dateData = data.dates[dateStr];
         const stats = Storage.getDateStats(dateStr);
         const yourHotels = Storage.getYourHotelsData(dateStr);
 
@@ -226,11 +225,9 @@ const App = {
             const price = hotel.price;
             const marketAvg = stats.average;
 
-            // Calculate potential adjustments
             const percentilePosition = (position / stats.count) * 100;
             
             if (percentilePosition < 20) {
-                // In bottom 20% - might be underpriced
                 const suggestedPrice = Math.round(price * 1.05);
                 recommendations.push({
                     hotel: hotel.name,
@@ -240,7 +237,6 @@ const App = {
                     reason: `Currently in the lowest 20% of market prices. Market average is $${marketAvg}.`
                 });
             } else if (percentilePosition > 80) {
-                // In top 20% - might be overpriced
                 const suggestedPrice = Math.round(marketAvg * 1.1);
                 recommendations.push({
                     hotel: hotel.name,
@@ -250,7 +246,6 @@ const App = {
                     reason: `Currently in the highest 20% of market prices. May impact occupancy.`
                 });
             } else {
-                // Well positioned
                 recommendations.push({
                     hotel: hotel.name,
                     currentPrice: price,
@@ -271,7 +266,6 @@ const App = {
         const occupancy = occupancyPercent / 100;
         const currentRevenue = rooms * currentRate * occupancy * days;
         
-        // Calculate at different price points
         const scenarios = [
             { label: 'Current', rate: currentRate },
             { label: '-10%', rate: currentRate * 0.9 },
@@ -280,8 +274,7 @@ const App = {
             { label: '+10%', rate: currentRate * 1.1 }
         ];
 
-        // Simple price elasticity assumption
-        const elasticity = -1.5; // 1% price increase = 1.5% occupancy decrease
+        const elasticity = -1.5;
 
         return scenarios.map(scenario => {
             const priceChange = (scenario.rate - currentRate) / currentRate;
@@ -304,10 +297,9 @@ document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
 
-// Handle visibility change (refresh data when tab becomes visible)
+// Handle visibility change
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && App.isInitialized) {
-        // Optionally refresh stats when user returns to tab
         UI.updateHeaderStats();
     }
 });
@@ -321,7 +313,7 @@ window.addEventListener('offline', () => {
     UI.showToast('You are offline. Viewing cached data.', 'info');
 });
 
-// Export for potential external use
+// Export for external use
 window.MackinawIntel = {
     App,
     API,
