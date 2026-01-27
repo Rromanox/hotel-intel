@@ -8,6 +8,7 @@ const UI = {
     currentPage: 'dashboard',
     currentMonth: { year: 2026, month: 5 },
     selectedDate: null,
+    eventsBound: false,
 
     /**
      * Initialize UI elements and event listeners
@@ -180,9 +181,13 @@ const UI = {
     },
 
     /**
-     * Bind event listeners
+     * Bind event listeners (only once)
      */
     bindEvents() {
+        // Prevent duplicate bindings
+        if (this.eventsBound) return;
+        this.eventsBound = true;
+        
         // Mobile menu toggle
         const sidebarOverlay = document.getElementById('sidebar-overlay');
         
@@ -241,10 +246,14 @@ const UI = {
         });
 
         // Calendar navigation
-        this.elements.prevMonth?.addEventListener('click', () => {
+        this.elements.prevMonth?.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.changeCalendarMonth(-1);
         });
-        this.elements.nextMonth?.addEventListener('click', () => {
+        this.elements.nextMonth?.addEventListener('pointerup', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.changeCalendarMonth(1);
         });
 
@@ -457,7 +466,11 @@ const UI = {
         this.currentPage = pageName;
 
         // Page-specific initialization
-        if (pageName === 'analytics') {
+        if (pageName === 'monthly') {
+            // Refresh calendar when navigating to monthly view
+            this.renderCalendar();
+            this.updateMonthDataBanner();
+        } else if (pageName === 'analytics') {
             this.initAnalyticsCharts();
         } else if (pageName === 'competitors') {
             this.initCompetitorPage();
@@ -672,6 +685,23 @@ const UI = {
         } else if (month > 12) {
             month = 1;
             year++;
+        }
+
+        // Season limits: May 2026 to October 2026
+        const minMonth = 5;  // May
+        const maxMonth = 10; // October
+        const seasonYear = 2026;
+        
+        // Don't go before May 2026
+        if (year < seasonYear || (year === seasonYear && month < minMonth)) {
+            year = seasonYear;
+            month = minMonth;
+        }
+        
+        // Don't go after October 2026
+        if (year > seasonYear || (year === seasonYear && month > maxMonth)) {
+            year = seasonYear;
+            month = maxMonth;
         }
 
         this.currentMonth = { year, month };
