@@ -114,6 +114,12 @@ const UI = {
             exportAllBtn: document.getElementById('export-all-btn'),
             forceUpdateBtn: document.getElementById('force-update-btn'),
             
+            // API Credits
+            checkCreditsBtn: document.getElementById('check-credits-btn'),
+            creditsRemaining: document.getElementById('credits-remaining'),
+            creditsUsed: document.getElementById('credits-used'),
+            creditsLimit: document.getElementById('credits-limit'),
+            
             // Update controls
             manualUpdateBtn: document.getElementById('manual-update-btn'),
             updateModal: document.getElementById('update-modal'),
@@ -212,6 +218,39 @@ const UI = {
 
         this.elements.forceUpdateBtn?.addEventListener('click', () => {
             App.performUpdate();
+        });
+
+        // Check API Credits button
+        this.elements.checkCreditsBtn?.addEventListener('click', async () => {
+            const btn = this.elements.checkCreditsBtn;
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
+            
+            try {
+                const result = await API.checkAccount();
+                if (result.success) {
+                    this.elements.creditsRemaining.textContent = result.remainingLimit;
+                    this.elements.creditsUsed.textContent = result.requestUsed;
+                    this.elements.creditsLimit.textContent = result.requestLimit;
+                    
+                    // Color code based on usage
+                    const usagePercent = (result.requestUsed / result.requestLimit) * 100;
+                    if (usagePercent > 90) {
+                        this.elements.creditsRemaining.classList.add('danger');
+                    } else if (usagePercent > 70) {
+                        this.elements.creditsRemaining.classList.add('warning');
+                    }
+                    
+                    this.showToast(`API Credits: ${result.remainingLimit} remaining`, 'success');
+                } else {
+                    this.showToast('Failed to check credits: ' + result.error, 'error');
+                }
+            } catch (error) {
+                this.showToast('Error checking credits', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Check Credits';
+            }
         });
 
         this.elements.manualUpdateBtn?.addEventListener('click', () => {

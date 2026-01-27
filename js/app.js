@@ -7,6 +7,7 @@
 
 const App = {
     isInitialized: false,
+    DATA_VERSION: '2.0', // Increment this when data structure changes
 
     /**
      * Initialize the application
@@ -19,21 +20,25 @@ const App = {
             UI.init();
             Charts.init();
 
-            // Check for existing data
+            // Check for existing data and validate it
             const existingData = Storage.loadData();
+            const needsReset = this.shouldResetData(existingData);
             
-            if (existingData && existingData.dates && Object.keys(existingData.dates).length > 0) {
+            if (existingData && !needsReset && existingData.dates && Object.keys(existingData.dates).length > 0) {
                 console.log('📊 Found existing data, loading...');
                 this.loadExistingData();
             } else {
-                console.log('🆕 No existing data, generating demo data...');
+                if (needsReset) {
+                    console.log('🔄 Data version changed, regenerating...');
+                    Storage.clearAll();
+                }
+                console.log('🆕 Generating fresh demo data (15 hotels only)...');
                 await this.loadDemoData();
             }
 
             // Check if update is due
             if (Storage.isUpdateDue()) {
                 console.log('⏰ Update is due, prompting user...');
-                // Don't auto-update, just show a notification
                 setTimeout(() => {
                     UI.showToast('Rate data may be outdated. Click "Update Data" to refresh.', 'info');
                 }, 2000);
@@ -53,6 +58,27 @@ const App = {
     },
 
     /**
+     * Check if we need to reset data (version change or too many hotels)
+     */
+    shouldResetData(data) {
+        if (!data) return false;
+        
+        // Check data version
+        if (data.dataVersion !== this.DATA_VERSION) return true;
+        
+        // Check if we have old data with too many hotels (should be 15 now)
+        if (data.totalHotels && data.totalHotels > 20) return true;
+        
+        // Check a sample date for hotel count
+        if (data.dates) {
+            const sampleDate = Object.values(data.dates)[0];
+            if (sampleDate && sampleDate.hotels && sampleDate.hotels.length > 20) return true;
+        }
+        
+        return false;
+    },
+
+    /**
      * Load existing data and update UI
      */
     loadExistingData() {
@@ -64,13 +90,8 @@ const App = {
         // Update header stats
         UI.updateHeaderStats();
 
-        // Get the most recent date with data
-        const dates = Object.keys(data.dates).sort();
-        const latestDate = dates[dates.length - 1];
-
-        // Determine which month to show initially
-        const [year, month] = latestDate.split('-');
-        UI.selectMonth(parseInt(year), parseInt(month));
+        // Always start on May 2026
+        UI.selectMonth(2026, 5);
 
         // Update activity feed
         UI.updateActivityFeed();
@@ -90,10 +111,13 @@ const App = {
      * Load demo data for testing
      */
     async loadDemoData() {
-        UI.showToast('Generating demo data...', 'info');
+        UI.showToast('Generating demo data (15 tracked hotels)...', 'info');
 
         // Generate demo data
         const demoData = DemoData.generateAllData();
+        
+        // Add data version for future compatibility checks
+        demoData.dataVersion = this.DATA_VERSION;
         
         // Save to storage
         Storage.saveData(demoData);

@@ -73,11 +73,11 @@ const CONFIG = {
         settingsKey: 'mackinawIntelSettings'
     },
 
-    // Date Range for Data Collection (May - September 2026)
+    // Date Range for Data Collection (May - October 2026)
     dateRange: {
         startMonth: 5,
         startYear: 2026,
-        monthsToCollect: 5
+        monthsToCollect: 6 // May, June, July, August, September, October
     },
 
     // UI Settings

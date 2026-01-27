@@ -580,7 +580,7 @@ const DemoData = {
         const results = {};
 
         // Seasonal multipliers (peak summer = higher prices)
-        const seasonMultipliers = { 5: 1.0, 6: 1.25, 7: 1.5, 8: 1.45, 9: 1.1 };
+        const seasonMultipliers = { 5: 1.0, 6: 1.25, 7: 1.5, 8: 1.45, 9: 1.1, 10: 0.95 };
         const multiplier = seasonMultipliers[month] || 1;
 
         dates.forEach(date => {

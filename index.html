@@ -380,6 +380,10 @@
                             <span class="month-name">September</span>
                             <span class="month-year">2026</span>
                         </button>
+                        <button class="month-btn" data-month="2026-10">
+                            <span class="month-name">October</span>
+                            <span class="month-year">2026</span>
+                        </button>
                     </div>
                 </section>
 
@@ -595,14 +599,39 @@
             <!-- Settings Page -->
             <div class="page" id="page-settings">
                 <div class="settings-grid">
+                    
+                    <!-- API Credits Section - NEW -->
+                    <section class="settings-section api-credits-section">
+                        <h3 class="settings-title">📊 API Credits</h3>
+                        <div class="credits-display">
+                            <div class="credits-info">
+                                <div class="credits-stat">
+                                    <span class="credits-number" id="credits-remaining">--</span>
+                                    <span class="credits-label">Remaining</span>
+                                </div>
+                                <div class="credits-stat">
+                                    <span class="credits-number" id="credits-used">--</span>
+                                    <span class="credits-label">Used</span>
+                                </div>
+                                <div class="credits-stat">
+                                    <span class="credits-number" id="credits-limit">--</span>
+                                    <span class="credits-label">Total Limit</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" id="check-credits-btn">
+                                Check Credits
+                            </button>
+                        </div>
+                    </section>
+
                     <section class="settings-section">
                         <h3 class="settings-title">API Configuration</h3>
                         <div class="setting-row">
                             <div class="setting-info">
-                                <span class="setting-label">MakCorp API Key</span>
-                                <span class="setting-desc">Your API key for hotel data access</span>
+                                <span class="setting-label">API Mode</span>
+                                <span class="setting-desc">Using secure Render proxy</span>
                             </div>
-                            <input type="password" id="api-key-input" class="setting-input" placeholder="Enter API Key">
+                            <span class="setting-value" style="color: var(--success);">🔒 Proxy (Secure)</span>
                         </div>
                         <div class="setting-row">
                             <div class="setting-info">

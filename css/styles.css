@@ -2235,3 +2235,73 @@ body {
         min-width: 100%;
     }
 }
+
+/* ============================================
+   API CREDITS SECTION
+   ============================================ */
+
+.api-credits-section {
+    background: linear-gradient(135deg, var(--navy-800), var(--navy-900)) !important;
+    border: 1px solid var(--gold-500) !important;
+}
+
+.api-credits-section .settings-title {
+    color: var(--gold-400);
+}
+
+.credits-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.credits-info {
+    display: flex;
+    gap: 30px;
+}
+
+.credits-stat {
+    text-align: center;
+}
+
+.credits-number {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.credits-number.warning {
+    color: #f97316;
+}
+
+.credits-number.danger {
+    color: var(--danger);
+}
+
+.credits-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--navy-300);
+}
+
+#check-credits-btn {
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .credits-display {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .credits-info {
+        width: 100%;
+        justify-content: space-around;
+    }
+}
