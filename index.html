@@ -148,6 +148,25 @@
 
             <!-- Dashboard Page -->
             <div class="page active" id="page-dashboard">
+                <!-- Data Status Banner -->
+                <div class="data-status-banner" id="data-status-banner">
+                    <div class="status-icon">📊</div>
+                    <div class="status-content">
+                        <div class="status-title" id="data-status-title">No Rate Data Loaded</div>
+                        <div class="status-details" id="data-status-details">Go to Monthly Views and click "Load Rates" to fetch real hotel rates</div>
+                    </div>
+                    <div class="status-summary">
+                        <div class="summary-stat">
+                            <span class="stat-value" id="days-with-data">0</span>
+                            <span class="stat-label">Days Loaded</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value" id="days-remaining">184</span>
+                            <span class="stat-label">Days Remaining</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Hero Stats Section -->
                 <section class="hero-stats">
                     <div class="hero-card primary">
@@ -442,6 +461,17 @@
 
             <!-- Monthly Views Page -->
             <div class="page" id="page-monthly">
+                <!-- Month Data Status Banner -->
+                <div class="month-data-banner" id="month-data-banner">
+                    <div class="banner-content">
+                        <span class="banner-icon">⚠️</span>
+                        <span class="banner-text" id="month-banner-text">No rate data loaded for this month</span>
+                    </div>
+                    <button class="btn btn-primary btn-sm" id="load-month-rates-btn">
+                        Load Rates for This Month
+                    </button>
+                </div>
+
                 <section class="calendar-section">
                     <div class="section-header">
                         <h2 class="section-title">Monthly Rate Calendar</h2>
@@ -600,7 +630,7 @@
             <div class="page" id="page-settings">
                 <div class="settings-grid">
                     
-                    <!-- API Credits Section - NEW -->
+                    <!-- API Credits Section -->
                     <section class="settings-section api-credits-section">
                         <h3 class="settings-title">📊 API Credits</h3>
                         <div class="credits-display">
@@ -621,6 +651,43 @@
                             <button class="btn btn-secondary" id="check-credits-btn">
                                 Check Credits
                             </button>
+                        </div>
+                    </section>
+
+                    <!-- API Call History Section - NEW -->
+                    <section class="settings-section">
+                        <h3 class="settings-title">📜 API Call History</h3>
+                        <div class="api-history-container">
+                            <div class="api-history-header">
+                                <span>Recent API activity (last 20 calls)</span>
+                                <button class="btn btn-small btn-secondary" id="clear-history-btn">Clear History</button>
+                            </div>
+                            <div class="api-history-list" id="api-history-list">
+                                <div class="api-history-empty">No API calls recorded yet</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Data Coverage Section - NEW -->
+                    <section class="settings-section">
+                        <h3 class="settings-title">📅 Data Coverage</h3>
+                        <div class="data-coverage-info">
+                            <div class="coverage-stat">
+                                <span class="coverage-label">Data Type:</span>
+                                <span class="coverage-value" id="data-type-display">Demo</span>
+                            </div>
+                            <div class="coverage-stat">
+                                <span class="coverage-label">Dates with Real Data:</span>
+                                <span class="coverage-value" id="real-data-count">0</span>
+                            </div>
+                            <div class="coverage-stat">
+                                <span class="coverage-label">Dates with Demo Data:</span>
+                                <span class="coverage-value" id="demo-data-count">0</span>
+                            </div>
+                            <div class="coverage-stat">
+                                <span class="coverage-label">Date Range Covered:</span>
+                                <span class="coverage-value" id="date-range-display">--</span>
+                            </div>
                         </div>
                     </section>
 
@@ -700,17 +767,116 @@
     <!-- Toast Notification Container -->
     <div class="toast-container" id="toast-container"></div>
 
-    <!-- Data Update Modal -->
+    <!-- Date Range Picker Modal -->
+    <div class="modal" id="date-picker-modal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>📅 Fetch Rate Data</h3>
+                <button class="modal-close" id="close-date-picker">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Credits Status -->
+                <div class="credits-status-bar" id="modal-credits-bar">
+                    <div class="credits-status-info">
+                        <span class="credits-icon">💳</span>
+                        <span>Credits: <strong id="modal-credits-remaining">--</strong> remaining</span>
+                    </div>
+                    <button class="btn btn-small btn-secondary" id="modal-refresh-credits">Refresh</button>
+                </div>
+
+                <!-- Date Range Selection -->
+                <div class="date-range-section">
+                    <h4>Select Date Range</h4>
+                    <div class="date-range-inputs">
+                        <div class="date-input-group">
+                            <label>From:</label>
+                            <select id="fetch-from-date" class="date-select"></select>
+                        </div>
+                        <div class="date-input-group">
+                            <label>To:</label>
+                            <select id="fetch-to-date" class="date-select"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estimation Box -->
+                <div class="fetch-estimation" id="fetch-estimation">
+                    <div class="estimation-row">
+                        <span>Days selected:</span>
+                        <strong id="est-days-count">0</strong>
+                    </div>
+                    <div class="estimation-row">
+                        <span>API calls needed:</span>
+                        <strong id="est-api-calls">0</strong>
+                    </div>
+                    <div class="estimation-row">
+                        <span>Credits available:</span>
+                        <strong id="est-credits-available">--</strong>
+                    </div>
+                </div>
+
+                <!-- Warning Box (hidden by default) -->
+                <div class="fetch-warning" id="fetch-warning" style="display: none;">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-text">
+                        <strong>Not enough credits!</strong>
+                        <p id="warning-message">You can only fetch up to X days with your remaining credits.</p>
+                    </div>
+                </div>
+
+                <!-- Quick Load by Month -->
+                <div class="quick-load-section">
+                    <h4>Quick Load by Month</h4>
+                    <div class="month-buttons-grid" id="quick-month-buttons">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-fetch">Cancel</button>
+                <button class="btn btn-primary" id="confirm-fetch">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                        <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    Fetch Rates
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Update Progress Modal -->
     <div class="modal" id="update-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Updating Data...</h3>
+                <h3>Fetching Rate Data...</h3>
             </div>
             <div class="modal-body">
                 <div class="progress-bar">
                     <div class="progress-fill" id="update-progress"></div>
                 </div>
                 <p class="progress-text" id="update-status">Initializing...</p>
+                <div class="progress-details" id="progress-details">
+                    <span id="progress-dates">0 / 0 dates</span>
+                    <span id="progress-calls">0 API calls used</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fetch Results Modal -->
+    <div class="modal" id="fetch-results-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="fetch-results-title">Fetch Complete</h3>
+                <button class="modal-close" id="close-results">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="results-summary" id="results-summary">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="close-results-btn">Done</button>
             </div>
         </div>
     </div>

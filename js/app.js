@@ -24,25 +24,13 @@ const App = {
             const existingData = Storage.loadData();
             const needsReset = this.shouldResetData(existingData);
             
-            if (existingData && !needsReset && existingData.dates && Object.keys(existingData.dates).length > 0) {
-                console.log('📊 Found existing data, loading...');
-                this.loadExistingData();
-            } else {
-                if (needsReset) {
-                    console.log('🔄 Data version changed, regenerating...');
-                    Storage.clearAll();
-                }
-                console.log('🆕 Generating fresh demo data (15 hotels only)...');
-                await this.loadDemoData();
+            if (needsReset) {
+                console.log('🔄 Resetting old data format...');
+                Storage.clearAll();
             }
 
-            // Check if update is due
-            if (Storage.isUpdateDue()) {
-                console.log('⏰ Update is due, prompting user...');
-                setTimeout(() => {
-                    UI.showToast('Rate data may be outdated. Click "Update Data" to refresh.', 'info');
-                }, 2000);
-            }
+            // Load whatever data we have (could be empty)
+            this.loadExistingData();
 
             this.isInitialized = true;
             console.log('✅ Mackinaw Intel - Ready!');
@@ -66,6 +54,9 @@ const App = {
         // Check data version
         if (data.dataVersion !== this.DATA_VERSION) return true;
         
+        // Check if we have old demo data
+        if (data.isDemo === true) return true;
+        
         // Check if we have old data with too many hotels (should be 15 now)
         if (data.totalHotels && data.totalHotels > 20) return true;
         
@@ -82,48 +73,61 @@ const App = {
      * Load existing data and update UI
      */
     loadExistingData() {
-        const data = Storage.loadData();
+        const data = Storage.loadData() || { dates: {}, dataVersion: this.DATA_VERSION };
+        const hasData = data.dates && Object.keys(data.dates).length > 0;
         
-        // Populate date selector
-        UI.populateDateSelector();
+        // Update data status banners
+        UI.updateDataStatusBanner();
+        
+        if (hasData) {
+            // Populate date selector
+            UI.populateDateSelector();
 
-        // Update header stats
-        UI.updateHeaderStats();
+            // Update header stats
+            UI.updateHeaderStats();
 
-        // Always start on May 2026
-        UI.selectMonth(2026, 5);
+            // Always start on May 2026
+            UI.selectMonth(2026, 5);
 
-        // Update activity feed
-        UI.updateActivityFeed();
+            // Update activity feed
+            UI.updateActivityFeed();
+        } else {
+            // No data yet - show empty state
+            console.log('📭 No rate data yet. User needs to load rates.');
+            
+            // Set default month view
+            UI.selectMonth(2026, 5);
+            
+            // Update header with defaults
+            if (UI.elements.totalHotels) UI.elements.totalHotels.textContent = '15';
+            if (UI.elements.portfolioAvg) UI.elements.portfolioAvg.textContent = '--';
+            if (UI.elements.marketPosition) UI.elements.marketPosition.textContent = '--';
+        }
 
         // Update settings page
         UI.updateSettingsPage();
-
-        // Show demo data notice if applicable
-        if (data.isDemo) {
-            setTimeout(() => {
-                UI.showToast('Viewing demo data. Real API data requires network access.', 'info');
-            }, 1000);
-        }
+        
+        // Update month banner
+        UI.updateMonthDataBanner();
     },
 
     /**
-     * Load demo data for testing
+     * Initialize empty data structure (no demo data)
      */
-    async loadDemoData() {
-        UI.showToast('Generating demo data (15 tracked hotels)...', 'info');
-
-        // Generate demo data
-        const demoData = DemoData.generateAllData();
-        
-        // Add data version for future compatibility checks
-        demoData.dataVersion = this.DATA_VERSION;
+    async initEmptyData() {
+        // Create empty data structure
+        const emptyData = {
+            dates: {},
+            lastFullUpdate: null,
+            totalHotels: 15,
+            isDemo: false,
+            dataVersion: this.DATA_VERSION
+        };
         
         // Save to storage
-        Storage.saveData(demoData);
-        Storage.setLastUpdate();
+        Storage.saveData(emptyData);
 
-        // Load the data
+        // Load the empty state
         this.loadExistingData();
     },
 

@@ -316,5 +316,97 @@ const Storage = {
         changes.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
         return changes;
+    },
+
+    // ============================================
+    // API CALL HISTORY
+    // ============================================
+
+    /**
+     * Log an API call to history
+     */
+    logApiCall(entry) {
+        const history = this.getApiHistory();
+        
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            action: entry.action || 'API Call',
+            details: entry.details || '',
+            success: entry.success !== false,
+            creditsUsed: entry.creditsUsed || 0,
+            hotelsFound: entry.hotelsFound || 0,
+            datesProcessed: entry.datesProcessed || 0,
+            error: entry.error || null
+        };
+
+        // Add to beginning of array
+        history.unshift(logEntry);
+
+        // Keep only last 20 entries
+        if (history.length > 20) {
+            history.length = 20;
+        }
+
+        localStorage.setItem('mackinawIntelApiHistory', JSON.stringify(history));
+        return logEntry;
+    },
+
+    /**
+     * Get API call history
+     */
+    getApiHistory() {
+        try {
+            const history = localStorage.getItem('mackinawIntelApiHistory');
+            return history ? JSON.parse(history) : [];
+        } catch (error) {
+            return [];
+        }
+    },
+
+    /**
+     * Clear API history
+     */
+    clearApiHistory() {
+        localStorage.removeItem('mackinawIntelApiHistory');
+    },
+
+    /**
+     * Get data coverage statistics
+     */
+    getDataCoverage() {
+        const data = this.loadData();
+        if (!data || !data.dates) {
+            return {
+                type: 'none',
+                realDataCount: 0,
+                demoDataCount: 0,
+                totalDates: 0,
+                dateRange: null
+            };
+        }
+
+        const dates = Object.keys(data.dates).sort();
+        let realCount = 0;
+        let demoCount = 0;
+
+        dates.forEach(date => {
+            const dateData = data.dates[date];
+            if (dateData.isDemo || data.isDemo) {
+                demoCount++;
+            } else {
+                realCount++;
+            }
+        });
+
+        return {
+            type: data.isDemo ? 'demo' : (realCount === dates.length ? 'live' : 'partial'),
+            realDataCount: realCount,
+            demoDataCount: demoCount,
+            totalDates: dates.length,
+            dateRange: dates.length > 0 ? {
+                start: dates[0],
+                end: dates[dates.length - 1]
+            } : null
+        };
     }
 };

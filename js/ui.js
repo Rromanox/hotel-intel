@@ -120,11 +120,59 @@ const UI = {
             creditsUsed: document.getElementById('credits-used'),
             creditsLimit: document.getElementById('credits-limit'),
             
+            // API History
+            apiHistoryList: document.getElementById('api-history-list'),
+            clearHistoryBtn: document.getElementById('clear-history-btn'),
+            
+            // Data Coverage
+            dataTypeDisplay: document.getElementById('data-type-display'),
+            realDataCount: document.getElementById('real-data-count'),
+            demoDataCount: document.getElementById('demo-data-count'),
+            dateRangeDisplay: document.getElementById('date-range-display'),
+            
+            // Data Status (Dashboard)
+            dataStatusBanner: document.getElementById('data-status-banner'),
+            dataStatusTitle: document.getElementById('data-status-title'),
+            dataStatusDetails: document.getElementById('data-status-details'),
+            daysWithData: document.getElementById('days-with-data'),
+            daysRemaining: document.getElementById('days-remaining'),
+            
+            // Month Data Banner (Monthly View)
+            monthDataBanner: document.getElementById('month-data-banner'),
+            monthBannerText: document.getElementById('month-banner-text'),
+            loadMonthRatesBtn: document.getElementById('load-month-rates-btn'),
+            
             // Update controls
             manualUpdateBtn: document.getElementById('manual-update-btn'),
             updateModal: document.getElementById('update-modal'),
             updateProgress: document.getElementById('update-progress'),
             updateStatus: document.getElementById('update-status'),
+            progressDetails: document.getElementById('progress-details'),
+            progressDates: document.getElementById('progress-dates'),
+            progressCalls: document.getElementById('progress-calls'),
+            
+            // Date Picker Modal
+            datePickerModal: document.getElementById('date-picker-modal'),
+            closeDatePicker: document.getElementById('close-date-picker'),
+            modalCreditsRemaining: document.getElementById('modal-credits-remaining'),
+            modalRefreshCredits: document.getElementById('modal-refresh-credits'),
+            fetchFromDate: document.getElementById('fetch-from-date'),
+            fetchToDate: document.getElementById('fetch-to-date'),
+            estDaysCount: document.getElementById('est-days-count'),
+            estApiCalls: document.getElementById('est-api-calls'),
+            estCreditsAvailable: document.getElementById('est-credits-available'),
+            fetchWarning: document.getElementById('fetch-warning'),
+            warningMessage: document.getElementById('warning-message'),
+            quickMonthButtons: document.getElementById('quick-month-buttons'),
+            cancelFetch: document.getElementById('cancel-fetch'),
+            confirmFetch: document.getElementById('confirm-fetch'),
+            
+            // Fetch Results Modal
+            fetchResultsModal: document.getElementById('fetch-results-modal'),
+            fetchResultsTitle: document.getElementById('fetch-results-title'),
+            resultsSummary: document.getElementById('results-summary'),
+            closeResults: document.getElementById('close-results'),
+            closeResultsBtn: document.getElementById('close-results-btn'),
             
             // Toast container
             toastContainer: document.getElementById('toast-container')
@@ -242,6 +290,9 @@ const UI = {
                     }
                     
                     this.showToast(`API Credits: ${result.remainingLimit} remaining`, 'success');
+                    
+                    // Refresh the history display
+                    this.updateApiHistory();
                 } else {
                     this.showToast('Failed to check credits: ' + result.error, 'error');
                 }
@@ -253,8 +304,97 @@ const UI = {
             }
         });
 
+        // Clear API History button
+        this.elements.clearHistoryBtn?.addEventListener('click', () => {
+            if (confirm('Clear all API call history?')) {
+                Storage.clearApiHistory();
+                this.updateApiHistory();
+                this.showToast('API history cleared', 'info');
+            }
+        });
+
+        // Load Month Rates button
+        this.elements.loadMonthRatesBtn?.addEventListener('click', async () => {
+            const year = this.currentMonth.year;
+            const month = this.currentMonth.month;
+            
+            if (!confirm(`Load real rates for ${MONTH_NAMES[month - 1]} ${year}?\n\nThis will use approximately ${getDatesInMonth(year, month).length} API calls.`)) {
+                return;
+            }
+            
+            const btn = this.elements.loadMonthRatesBtn;
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            
+            this.showUpdateModal();
+            
+            try {
+                const result = await API.fetchMonth(year, month, (progress) => {
+                    this.updateProgress(progress);
+                });
+                
+                this.hideUpdateModal();
+                
+                if (result.limitReached) {
+                    this.showToast(`API limit reached! Loaded ${result.datesUpdated} days.`, 'error');
+                } else if (result.success) {
+                    this.showToast(`Loaded ${result.datesUpdated} days for ${MONTH_NAMES[month - 1]}!`, 'success');
+                } else {
+                    this.showToast(`Partial load: ${result.datesUpdated} days`, 'error');
+                }
+                
+                // Refresh the calendar and UI
+                this.updateMonthDataBanner();
+                this.renderCalendar();
+                this.updateDataStatusBanner();
+                App.loadExistingData();
+                
+            } catch (error) {
+                this.hideUpdateModal();
+                this.showToast('Error loading rates: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Load Rates for This Month';
+            }
+        });
+
+        // Open Date Picker Modal (instead of direct update)
         this.elements.manualUpdateBtn?.addEventListener('click', () => {
-            App.performUpdate();
+            this.openDatePickerModal();
+        });
+
+        // Date Picker Modal events
+        this.elements.closeDatePicker?.addEventListener('click', () => {
+            this.closeDatePickerModal();
+        });
+
+        this.elements.cancelFetch?.addEventListener('click', () => {
+            this.closeDatePickerModal();
+        });
+
+        this.elements.modalRefreshCredits?.addEventListener('click', async () => {
+            await this.refreshModalCredits();
+        });
+
+        this.elements.fetchFromDate?.addEventListener('change', () => {
+            this.updateFetchEstimation();
+        });
+
+        this.elements.fetchToDate?.addEventListener('change', () => {
+            this.updateFetchEstimation();
+        });
+
+        this.elements.confirmFetch?.addEventListener('click', () => {
+            this.executeFetch();
+        });
+
+        // Results Modal events
+        this.elements.closeResults?.addEventListener('click', () => {
+            this.closeFetchResultsModal();
+        });
+
+        this.elements.closeResultsBtn?.addEventListener('click', () => {
+            this.closeFetchResultsModal();
         });
 
         // Close sidebar on outside click (mobile)
@@ -414,6 +554,9 @@ const UI = {
         // Update calendar
         this.currentMonth = { year, month };
         this.renderCalendar();
+        
+        // Update month data banner
+        this.updateMonthDataBanner();
     },
 
     /**
@@ -464,17 +607,22 @@ const UI = {
             cell.className = 'calendar-day';
             cell.dataset.date = dateStr;
 
-            if (dayData && dayData.hotels) {
+            if (dayData && dayData.hotels && dayData.hotels.length > 0) {
+                // Has real data
                 const stats = Storage.getDateStats(dateStr);
                 cell.innerHTML = `
                     <span class="day-number">${day}</span>
                     <span class="day-rate">$${stats.average} avg</span>
                 `;
-                
+                cell.classList.add('has-data');
                 cell.addEventListener('click', () => this.selectCalendarDate(dateStr));
             } else {
+                // No data for this day
                 cell.classList.add('no-data');
-                cell.innerHTML = `<span class="day-number">${day}</span>`;
+                cell.innerHTML = `
+                    <span class="day-number">${day}</span>
+                    <span class="day-rate no-data-label">No data</span>
+                `;
             }
 
             if (dateStr === this.selectedDate) {
@@ -888,17 +1036,678 @@ const UI = {
     },
 
     /**
-     * Update settings page values
+     * Update the data status banner on Dashboard
+     */
+    updateDataStatusBanner() {
+        const data = Storage.loadData();
+        const banner = this.elements.dataStatusBanner;
+        const title = this.elements.dataStatusTitle;
+        const details = this.elements.dataStatusDetails;
+        const daysLoaded = this.elements.daysWithData;
+        const daysRemaining = this.elements.daysRemaining;
+        
+        if (!banner) return;
+
+        // Count days with data
+        const loadedDates = data?.dates ? Object.keys(data.dates).length : 0;
+        const totalDays = 184; // May-October = 184 days
+        const remaining = totalDays - loadedDates;
+
+        if (daysLoaded) daysLoaded.textContent = loadedDates;
+        if (daysRemaining) daysRemaining.textContent = remaining;
+
+        if (loadedDates === 0) {
+            banner.className = 'data-status-banner';
+            if (title) title.textContent = 'No Rate Data Loaded';
+            if (details) details.textContent = 'Go to Monthly Views and click "Load Rates for This Month" to fetch real hotel rates';
+        } else if (loadedDates < totalDays) {
+            banner.className = 'data-status-banner partial-data';
+            if (title) title.textContent = `Partial Data: ${loadedDates} Days Loaded`;
+            
+            // List which months have data
+            const monthsWithData = this.getMonthsWithData(data);
+            if (details) details.textContent = `Data loaded for: ${monthsWithData}. Load more months to complete your data.`;
+        } else {
+            banner.className = 'data-status-banner has-data';
+            if (title) title.textContent = 'All Rate Data Loaded';
+            if (details) details.textContent = 'Complete data for May through October 2026';
+        }
+    },
+
+    /**
+     * Get a summary of which months have data
+     */
+    getMonthsWithData(data) {
+        if (!data?.dates) return 'None';
+        
+        const monthCounts = {};
+        Object.keys(data.dates).forEach(date => {
+            const [year, month] = date.split('-');
+            const key = `${MONTH_NAMES_SHORT[parseInt(month) - 1]} ${year}`;
+            monthCounts[key] = (monthCounts[key] || 0) + 1;
+        });
+
+        return Object.entries(monthCounts)
+            .map(([month, count]) => `${month} (${count} days)`)
+            .join(', ') || 'None';
+    },
+
+    /**
+     * Update the month data banner in Monthly View
+     */
+    updateMonthDataBanner() {
+        const banner = this.elements.monthDataBanner;
+        const text = this.elements.monthBannerText;
+        const btn = this.elements.loadMonthRatesBtn;
+        
+        if (!banner) return;
+
+        const year = this.currentMonth.year;
+        const month = this.currentMonth.month;
+        const monthName = MONTH_NAMES[month - 1];
+        
+        // Count how many days this month have data
+        const data = Storage.loadData();
+        const datesInMonth = getDatesInMonth(year, month);
+        const datesWithData = datesInMonth.filter(date => data?.dates?.[date]).length;
+        const totalDays = datesInMonth.length;
+
+        if (datesWithData === 0) {
+            banner.className = 'month-data-banner';
+            if (text) text.textContent = `No rate data loaded for ${monthName} ${year}`;
+            if (btn) {
+                btn.textContent = `Load Rates for ${monthName} (~${totalDays} API calls)`;
+                btn.style.display = 'block';
+            }
+        } else if (datesWithData < totalDays) {
+            banner.className = 'month-data-banner partial-data';
+            if (text) text.textContent = `Partial data: ${datesWithData} of ${totalDays} days loaded for ${monthName}`;
+            if (btn) {
+                btn.textContent = `Load Remaining Days (~${totalDays - datesWithData} API calls)`;
+                btn.style.display = 'block';
+            }
+        } else {
+            banner.className = 'month-data-banner has-data';
+            if (text) text.textContent = `✅ All ${totalDays} days loaded for ${monthName} ${year}`;
+            if (btn) btn.style.display = 'none';
+        }
+    },
+
+    /**
+     * Update API call history display
+     */
+    updateApiHistory() {
+        const container = this.elements.apiHistoryList;
+        if (!container) return;
+
+        const history = Storage.getApiHistory();
+
+        if (history.length === 0) {
+            container.innerHTML = '<div class="api-history-empty">No API calls recorded yet</div>';
+            return;
+        }
+
+        container.innerHTML = history.map(entry => {
+            const date = new Date(entry.timestamp);
+            const timeStr = date.toLocaleString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+            });
+
+            const statusClass = entry.success ? 'success' : (entry.error ? 'error' : 'warning');
+
+            return `
+                <div class="api-history-item ${statusClass}">
+                    <div class="api-history-main">
+                        <div class="api-history-action">${entry.action}</div>
+                        <div class="api-history-details">${entry.details || ''}</div>
+                    </div>
+                    <div class="api-history-meta">
+                        <div class="api-history-time">${timeStr}</div>
+                        ${entry.creditsUsed ? `<div class="api-history-credits">${entry.creditsUsed} call${entry.creditsUsed > 1 ? 's' : ''}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Update data coverage display
+     */
+    updateDataCoverage() {
+        const coverage = Storage.getDataCoverage();
+
+        // Data type
+        if (this.elements.dataTypeDisplay) {
+            this.elements.dataTypeDisplay.textContent = coverage.type.charAt(0).toUpperCase() + coverage.type.slice(1);
+            this.elements.dataTypeDisplay.className = 'coverage-value ' + coverage.type;
+        }
+
+        // Real data count
+        if (this.elements.realDataCount) {
+            this.elements.realDataCount.textContent = coverage.realDataCount;
+        }
+
+        // Demo data count
+        if (this.elements.demoDataCount) {
+            this.elements.demoDataCount.textContent = coverage.demoDataCount;
+        }
+
+        // Date range
+        if (this.elements.dateRangeDisplay && coverage.dateRange) {
+            const start = new Date(coverage.dateRange.start + 'T00:00:00');
+            const end = new Date(coverage.dateRange.end + 'T00:00:00');
+            const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            this.elements.dateRangeDisplay.textContent = `${startStr} - ${endStr}`;
+        } else if (this.elements.dateRangeDisplay) {
+            this.elements.dateRangeDisplay.textContent = 'No data';
+        }
+    },
+
+    /**
+     * Update settings page with all info
      */
     updateSettingsPage() {
-        const settings = Storage.loadSettings();
-        
-        if (this.elements.apiKeyInput) {
-            this.elements.apiKeyInput.value = settings.apiKey || '';
+        // Update last update time
+        if (this.elements.lastSuccessfulUpdate) {
+            const lastUpdate = Storage.getLastUpdate();
+            if (lastUpdate) {
+                const date = new Date(lastUpdate);
+                this.elements.lastSuccessfulUpdate.textContent = date.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit'
+                });
+            } else {
+                this.elements.lastSuccessfulUpdate.textContent = 'Never';
+            }
         }
-        
-        if (this.elements.updateInterval) {
-            this.elements.updateInterval.value = settings.updateInterval || 15;
+
+        // Update API history
+        this.updateApiHistory();
+
+        // Update data coverage
+        this.updateDataCoverage();
+    },
+
+    // ============================================
+    // DATE PICKER MODAL FUNCTIONS
+    // ============================================
+
+    currentCredits: null,
+
+    /**
+     * Open the date picker modal
+     */
+    async openDatePickerModal() {
+        const modal = this.elements.datePickerModal;
+        if (!modal) return;
+
+        // Populate date dropdowns
+        this.populateDateDropdowns();
+
+        // Populate quick month buttons
+        this.populateQuickMonthButtons();
+
+        // Get current credits
+        await this.refreshModalCredits();
+
+        // Show modal
+        modal.classList.add('active');
+
+        // Initial estimation
+        this.updateFetchEstimation();
+    },
+
+    /**
+     * Close the date picker modal
+     */
+    closeDatePickerModal() {
+        const modal = this.elements.datePickerModal;
+        if (modal) modal.classList.remove('active');
+    },
+
+    /**
+     * Populate the date dropdown selectors
+     */
+    populateDateDropdowns() {
+        const fromSelect = this.elements.fetchFromDate;
+        const toSelect = this.elements.fetchToDate;
+        if (!fromSelect || !toSelect) return;
+
+        // Generate all dates from May to October 2026
+        const dates = [];
+        const { startMonth, startYear, monthsToCollect } = CONFIG.dateRange;
+
+        for (let i = 0; i < monthsToCollect; i++) {
+            let month = startMonth + i;
+            let year = startYear;
+            if (month > 12) { month -= 12; year++; }
+            dates.push(...getDatesInMonth(year, month));
         }
+
+        // Create options
+        const createOptions = (selectedIndex = 0) => {
+            return dates.map((date, idx) => {
+                const d = new Date(date + 'T00:00:00');
+                const label = d.toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                return `<option value="${date}" ${idx === selectedIndex ? 'selected' : ''}>${label}</option>`;
+            }).join('');
+        };
+
+        fromSelect.innerHTML = createOptions(0);
+        toSelect.innerHTML = createOptions(Math.min(9, dates.length - 1)); // Default to 10 days
+    },
+
+    /**
+     * Populate quick month buttons
+     */
+    populateQuickMonthButtons() {
+        const container = this.elements.quickMonthButtons;
+        if (!container) return;
+
+        const data = Storage.loadData();
+        const { startMonth, startYear, monthsToCollect } = CONFIG.dateRange;
+
+        let html = '';
+
+        for (let i = 0; i < monthsToCollect; i++) {
+            let month = startMonth + i;
+            let year = startYear;
+            if (month > 12) { month -= 12; year++; }
+
+            const monthName = MONTH_NAMES_SHORT[month - 1];
+            const datesInMonth = getDatesInMonth(year, month);
+            const totalDays = datesInMonth.length;
+
+            // Check how many days have data
+            let daysWithData = 0;
+            let daysWithRealData = 0;
+            datesInMonth.forEach(date => {
+                if (data?.dates?.[date]) {
+                    daysWithData++;
+                    if (!data.dates[date].isDemo && !data.isDemo) {
+                        daysWithRealData++;
+                    }
+                }
+            });
+
+            let statusClass = '';
+            let statusText = '';
+            if (daysWithRealData === totalDays) {
+                statusClass = 'loaded';
+                statusText = '✓ Loaded';
+            } else if (daysWithRealData > 0) {
+                statusClass = 'partial';
+                statusText = `${daysWithRealData}/${totalDays} days`;
+            }
+
+            const canLoad = this.currentCredits === null || this.currentCredits >= totalDays;
+
+            html += `
+                <button class="quick-month-btn ${statusClass}" 
+                        data-month="${month}" 
+                        data-year="${year}"
+                        ${!canLoad ? 'disabled' : ''}>
+                    <span class="quick-month-name">${monthName}</span>
+                    <span class="quick-month-calls">${totalDays} calls</span>
+                    ${statusText ? `<span class="quick-month-status ${statusClass}">${statusText}</span>` : ''}
+                </button>
+            `;
+        }
+
+        container.innerHTML = html;
+
+        // Add click events to month buttons
+        container.querySelectorAll('.quick-month-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const month = parseInt(btn.dataset.month);
+                const year = parseInt(btn.dataset.year);
+                await this.fetchMonth(year, month);
+            });
+        });
+    },
+
+    /**
+     * Refresh credits in the modal
+     */
+    async refreshModalCredits() {
+        const btn = this.elements.modalRefreshCredits;
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '...';
+        }
+
+        try {
+            const result = await API.checkAccount();
+            if (result.success) {
+                this.currentCredits = result.remainingLimit;
+                if (this.elements.modalCreditsRemaining) {
+                    this.elements.modalCreditsRemaining.textContent = result.remainingLimit;
+                }
+                if (this.elements.estCreditsAvailable) {
+                    this.elements.estCreditsAvailable.textContent = result.remainingLimit;
+                }
+                // Refresh month buttons with new credit info
+                this.populateQuickMonthButtons();
+                this.updateFetchEstimation();
+            } else {
+                this.currentCredits = null;
+                if (this.elements.modalCreditsRemaining) {
+                    this.elements.modalCreditsRemaining.textContent = 'Error';
+                }
+            }
+        } catch (error) {
+            this.currentCredits = null;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Refresh';
+            }
+        }
+    },
+
+    /**
+     * Update the fetch estimation based on selected dates
+     */
+    updateFetchEstimation() {
+        const fromDate = this.elements.fetchFromDate?.value;
+        const toDate = this.elements.fetchToDate?.value;
+
+        if (!fromDate || !toDate) return;
+
+        // Calculate days between dates
+        const from = new Date(fromDate + 'T00:00:00');
+        const to = new Date(toDate + 'T00:00:00');
+        const days = Math.round((to - from) / (1000 * 60 * 60 * 24)) + 1;
+
+        const validDays = Math.max(0, days);
+        const apiCalls = validDays; // 1 call per day in quick mode
+
+        // Update display
+        if (this.elements.estDaysCount) {
+            this.elements.estDaysCount.textContent = validDays;
+        }
+        if (this.elements.estApiCalls) {
+            this.elements.estApiCalls.textContent = apiCalls;
+        }
+
+        // Check credits warning
+        const warning = this.elements.fetchWarning;
+        const confirmBtn = this.elements.confirmFetch;
+
+        if (this.currentCredits !== null && apiCalls > this.currentCredits) {
+            // Not enough credits
+            if (warning) {
+                warning.style.display = 'flex';
+                const maxDays = this.currentCredits;
+                const maxDate = new Date(from);
+                maxDate.setDate(maxDate.getDate() + maxDays - 1);
+                const maxDateStr = maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                if (this.elements.warningMessage) {
+                    if (this.currentCredits === 0) {
+                        this.elements.warningMessage.textContent = 'You have no credits remaining. Cannot fetch any data.';
+                    } else {
+                        this.elements.warningMessage.textContent = 
+                            `You need ${apiCalls} calls but only have ${this.currentCredits}. ` +
+                            `Max you can fetch: ${fromDate.split('-').slice(1).join('/')} to ${maxDateStr} (${maxDays} days)`;
+                    }
+                }
+            }
+            if (confirmBtn) {
+                confirmBtn.disabled = this.currentCredits === 0;
+                confirmBtn.textContent = this.currentCredits === 0 ? 'No Credits' : `Fetch ${this.currentCredits} Days`;
+            }
+        } else {
+            // Enough credits
+            if (warning) warning.style.display = 'none';
+            if (confirmBtn) {
+                confirmBtn.disabled = validDays === 0;
+                confirmBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                        <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    Fetch ${validDays} Days
+                `;
+            }
+        }
+    },
+
+    /**
+     * Execute the fetch based on selected date range
+     */
+    async executeFetch() {
+        const fromDate = this.elements.fetchFromDate?.value;
+        const toDate = this.elements.fetchToDate?.value;
+
+        if (!fromDate || !toDate) return;
+
+        // Generate dates array
+        const dates = [];
+        const from = new Date(fromDate + 'T00:00:00');
+        const to = new Date(toDate + 'T00:00:00');
+
+        // Limit to available credits if necessary
+        let maxDates = Math.round((to - from) / (1000 * 60 * 60 * 24)) + 1;
+        if (this.currentCredits !== null && maxDates > this.currentCredits) {
+            maxDates = this.currentCredits;
+        }
+
+        for (let i = 0; i < maxDates; i++) {
+            const date = new Date(from);
+            date.setDate(from.getDate() + i);
+            dates.push(formatDateForAPI(date));
+        }
+
+        if (dates.length === 0) {
+            this.showToast('No dates to fetch', 'error');
+            return;
+        }
+
+        // Close date picker and show progress
+        this.closeDatePickerModal();
+        this.showUpdateModal();
+
+        // Execute fetch
+        const result = await API.fetchDateRange(dates, (progress) => {
+            this.updateProgress(progress);
+            if (this.elements.progressDates) {
+                this.elements.progressDates.textContent = `${progress.completed} / ${progress.total} dates`;
+            }
+            if (this.elements.progressCalls) {
+                this.elements.progressCalls.textContent = `${progress.callsUsed} API calls used`;
+            }
+        }, { fullFetch: false, stopOnLimit: true });
+
+        // Save data
+        if (Object.keys(result.results).length > 0) {
+            const existingData = Storage.loadData() || { dates: {}, dataVersion: '2.0' };
+            
+            // Mark each date as real data (not demo)
+            Object.keys(result.results).forEach(date => {
+                result.results[date].isDemo = false;
+            });
+            
+            Object.assign(existingData.dates, result.results);
+            existingData.lastFullUpdate = new Date().toISOString();
+            existingData.totalHotels = 15;
+            existingData.isDemo = false;
+            existingData.dataVersion = '2.0';
+            Storage.saveData(existingData);
+            Storage.setLastUpdate();
+        }
+
+        // Log the fetch
+        Storage.logApiCall({
+            action: 'Custom Date Range Fetch',
+            details: `${dates[0]} to ${dates[dates.length - 1]} (${result.datesCompleted} days)`,
+            success: !result.limitReached,
+            creditsUsed: result.callsUsed,
+            datesProcessed: result.datesCompleted,
+            hotelsFound: 15,
+            error: result.limitReached ? 'API limit reached' : null
+        });
+
+        this.hideUpdateModal();
+
+        // Show results
+        this.showFetchResults(result, dates);
+
+        // Refresh the main UI
+        App.loadExistingData();
+    },
+
+    /**
+     * Fetch a specific month
+     */
+    async fetchMonth(year, month) {
+        const dates = getDatesInMonth(year, month);
+        const monthName = MONTH_NAMES[month - 1];
+
+        // Check credits
+        if (this.currentCredits !== null && dates.length > this.currentCredits) {
+            if (!confirm(`You need ${dates.length} credits but only have ${this.currentCredits}.\n\nFetch first ${this.currentCredits} days of ${monthName}?`)) {
+                return;
+            }
+            dates.length = this.currentCredits;
+        }
+
+        // Close date picker and show progress
+        this.closeDatePickerModal();
+        this.showUpdateModal();
+
+        // Execute fetch
+        const result = await API.fetchDateRange(dates, (progress) => {
+            this.updateProgress(progress);
+            if (this.elements.progressDates) {
+                this.elements.progressDates.textContent = `${progress.completed} / ${progress.total} dates`;
+            }
+            if (this.elements.progressCalls) {
+                this.elements.progressCalls.textContent = `${progress.callsUsed} API calls used`;
+            }
+        }, { fullFetch: false, stopOnLimit: true });
+
+        // Save data
+        if (Object.keys(result.results).length > 0) {
+            const existingData = Storage.loadData() || { dates: {}, dataVersion: '2.0' };
+            
+            Object.keys(result.results).forEach(date => {
+                result.results[date].isDemo = false;
+            });
+            
+            Object.assign(existingData.dates, result.results);
+            existingData.lastFullUpdate = new Date().toISOString();
+            existingData.totalHotels = 15;
+            existingData.isDemo = false;
+            existingData.dataVersion = '2.0';
+            Storage.saveData(existingData);
+            Storage.setLastUpdate();
+        }
+
+        // Log
+        Storage.logApiCall({
+            action: `Fetch ${monthName} ${year}`,
+            details: `${result.datesCompleted} of ${dates.length} days fetched`,
+            success: !result.limitReached,
+            creditsUsed: result.callsUsed,
+            datesProcessed: result.datesCompleted,
+            hotelsFound: 15,
+            error: result.limitReached ? 'API limit reached' : null
+        });
+
+        this.hideUpdateModal();
+        this.showFetchResults(result, dates);
+        App.loadExistingData();
+    },
+
+    /**
+     * Show fetch results modal
+     */
+    showFetchResults(result, requestedDates) {
+        const modal = this.elements.fetchResultsModal;
+        const title = this.elements.fetchResultsTitle;
+        const summary = this.elements.resultsSummary;
+
+        if (!modal || !summary) return;
+
+        // Build results HTML
+        let html = '';
+
+        if (result.datesCompleted > 0) {
+            const fetchedDates = Object.keys(result.results).sort();
+            const firstDate = new Date(fetchedDates[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const lastDate = new Date(fetchedDates[fetchedDates.length - 1] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            html += `
+                <div class="result-item success">
+                    <span class="result-icon">✅</span>
+                    <div class="result-text">
+                        <strong>Data Fetched Successfully</strong>
+                        <span>${firstDate} - ${lastDate} (${result.datesCompleted} days)</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (result.limitReached) {
+            html += `
+                <div class="result-item warning">
+                    <span class="result-icon">⚠️</span>
+                    <div class="result-text">
+                        <strong>API Limit Reached</strong>
+                        <span>Fetching stopped due to credit limit</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (result.datesSkipped > 0) {
+            html += `
+                <div class="result-item error">
+                    <span class="result-icon">❌</span>
+                    <div class="result-text">
+                        <strong>Days Not Fetched</strong>
+                        <span>${result.datesSkipped} days could not be fetched</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `
+            <div class="result-item">
+                <span class="result-icon">📊</span>
+                <div class="result-text">
+                    <strong>API Calls Used</strong>
+                    <span>${result.callsUsed} calls</span>
+                </div>
+            </div>
+        `;
+
+        if (title) {
+            title.textContent = result.limitReached ? 'Fetch Partially Complete' : 'Fetch Complete';
+        }
+
+        summary.innerHTML = html;
+        modal.classList.add('active');
+    },
+
+    /**
+     * Close fetch results modal
+     */
+    closeFetchResultsModal() {
+        const modal = this.elements.fetchResultsModal;
+        if (modal) modal.classList.remove('active');
     }
 };

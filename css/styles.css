@@ -2305,3 +2305,670 @@ body {
         justify-content: space-around;
     }
 }
+
+/* ============================================
+   DATA STATUS BANNER (Dashboard)
+   ============================================ */
+
+.data-status-banner {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--navy-800), var(--navy-900));
+    border: 1px solid var(--gold-500);
+    border-radius: var(--radius-lg);
+    margin-bottom: 24px;
+}
+
+.data-status-banner.has-data {
+    border-color: var(--success);
+}
+
+.data-status-banner.partial-data {
+    border-color: #f97316;
+}
+
+.status-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.status-content {
+    flex: 1;
+}
+
+.status-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+}
+
+.status-details {
+    font-size: 0.875rem;
+    color: var(--navy-300);
+}
+
+.status-summary {
+    display: flex;
+    gap: 24px;
+}
+
+.summary-stat {
+    text-align: center;
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.05);
+    border-radius: var(--radius-md);
+}
+
+.summary-stat .stat-value {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gold-400);
+    line-height: 1.2;
+}
+
+.summary-stat .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--navy-300);
+}
+
+/* ============================================
+   MONTH DATA BANNER (Monthly View)
+   ============================================ */
+
+.month-data-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 16px 20px;
+    background: rgba(249, 115, 22, 0.15);
+    border: 1px solid #f97316;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+.month-data-banner.has-data {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--success);
+}
+
+.month-data-banner.has-data .banner-icon {
+    color: var(--success);
+}
+
+.month-data-banner.partial-data {
+    background: rgba(249, 115, 22, 0.1);
+    border-color: #f97316;
+}
+
+.banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.banner-icon {
+    font-size: 1.5rem;
+}
+
+.banner-text {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+#load-month-rates-btn {
+    white-space: nowrap;
+}
+
+/* Hide banner when has full data */
+.month-data-banner.full-data {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--success);
+}
+
+.month-data-banner.full-data .banner-icon::before {
+    content: '✅';
+}
+
+/* ============================================
+   CALENDAR - NO DATA STATE
+   ============================================ */
+
+.calendar-day.no-data {
+    opacity: 0.5;
+    background: var(--bg-tertiary);
+}
+
+.calendar-day.no-data .day-avg {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.calendar-day.no-data::after {
+    content: 'No data';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    color: var(--text-tertiary);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .data-status-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .status-summary {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .month-data-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .banner-content {
+        flex-direction: column;
+    }
+}
+
+/* Calendar has-data styles */
+.calendar-day.has-data {
+    cursor: pointer;
+    border-color: var(--success);
+}
+
+.calendar-day.has-data:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.no-data-label {
+    font-size: 0.65rem !important;
+    color: var(--text-tertiary) !important;
+    font-style: italic;
+}
+
+/* ============================================
+   API CALL HISTORY SECTION
+   ============================================ */
+
+.api-history-container {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.api-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.btn-small {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+}
+
+.api-history-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.api-history-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.api-history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
+}
+
+.api-history-item:last-child {
+    border-bottom: none;
+}
+
+.api-history-item.success {
+    border-left: 3px solid var(--success);
+}
+
+.api-history-item.error {
+    border-left: 3px solid var(--danger);
+}
+
+.api-history-item.warning {
+    border-left: 3px solid #f97316;
+}
+
+.api-history-main {
+    flex: 1;
+}
+
+.api-history-action {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.api-history-details {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.api-history-time {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+.api-history-credits {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    color: var(--gold-500);
+}
+
+/* ============================================
+   DATA COVERAGE SECTION
+   ============================================ */
+
+.data-coverage-info {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.coverage-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.coverage-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.coverage-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.coverage-value.demo {
+    color: var(--gold-500);
+}
+
+.coverage-value.live {
+    color: var(--success);
+}
+
+.coverage-value.partial {
+    color: #f97316;
+}
+
+@media (max-width: 600px) {
+    .data-coverage-info {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
+   DATE RANGE PICKER MODAL
+   ============================================ */
+
+.modal-lg {
+    max-width: 550px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Credits Status Bar */
+.credits-status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+.credits-status-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.credits-icon {
+    font-size: 1.2rem;
+}
+
+.credits-status-info strong {
+    color: var(--gold-500);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Date Range Section */
+.date-range-section {
+    margin-bottom: 20px;
+}
+
+.date-range-section h4,
+.quick-load-section h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+}
+
+.date-range-inputs {
+    display: flex;
+    gap: 16px;
+}
+
+.date-input-group {
+    flex: 1;
+}
+
+.date-input-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+
+.date-select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.date-select:focus {
+    outline: none;
+    border-color: var(--gold-500);
+}
+
+/* Estimation Box */
+.fetch-estimation {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.estimation-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.9rem;
+}
+
+.estimation-row:not(:last-child) {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.estimation-row strong {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+}
+
+/* Warning Box */
+.fetch-warning {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(249, 115, 22, 0.1);
+    border: 1px solid #f97316;
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+
+.warning-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.warning-text strong {
+    color: #f97316;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.warning-text p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Quick Load Section */
+.quick-load-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.month-buttons-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.quick-month-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.quick-month-btn:hover:not(:disabled) {
+    border-color: var(--gold-500);
+    background: var(--bg-secondary);
+}
+
+.quick-month-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.quick-month-btn.loaded {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.quick-month-btn.partial {
+    border-color: #f97316;
+    background: rgba(249, 115, 22, 0.1);
+}
+
+.quick-month-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.quick-month-calls {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.quick-month-status {
+    font-size: 0.7rem;
+    margin-top: 4px;
+}
+
+.quick-month-status.loaded {
+    color: var(--success);
+}
+
+.quick-month-status.partial {
+    color: #f97316;
+}
+
+/* Progress Details */
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Results Summary */
+.results-summary {
+    padding: 16px;
+}
+
+.result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-icon {
+    font-size: 1.2rem;
+}
+
+.result-text {
+    flex: 1;
+}
+
+.result-text strong {
+    display: block;
+    color: var(--text-primary);
+}
+
+.result-text span {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.result-item.success .result-icon { color: var(--success); }
+.result-item.warning .result-icon { color: #f97316; }
+.result-item.error .result-icon { color: var(--danger); }
+
+/* Calendar Day Data Indicators */
+.calendar-day.has-real-data {
+    border-color: var(--success);
+}
+
+.calendar-day.has-real-data::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+}
+
+.calendar-day.has-demo-data {
+    border-color: var(--gold-500);
+    border-style: dashed;
+}
+
+.calendar-day.no-data {
+    opacity: 0.5;
+    background: var(--bg-tertiary);
+}
+
+@media (max-width: 500px) {
+    .date-range-inputs {
+        flex-direction: column;
+    }
+    
+    .month-buttons-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Modal Active State */
+.modal.active {
+    display: flex;
+}

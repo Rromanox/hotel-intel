@@ -134,6 +134,15 @@ const API = {
                 const data = await response.json();
                 this.lastKnownLimit = data.requestLimit;
                 this.lastKnownRemaining = data.remainingLimit;
+                
+                // Log this check
+                Storage.logApiCall({
+                    action: 'Check Credits',
+                    details: `Remaining: ${data.remainingLimit} / ${data.requestLimit}`,
+                    success: true,
+                    creditsUsed: 1
+                });
+                
                 return {
                     success: true,
                     requestLimit: data.requestLimit,
@@ -141,8 +150,22 @@ const API = {
                     remainingLimit: data.remainingLimit
                 };
             }
+            
+            Storage.logApiCall({
+                action: 'Check Credits',
+                details: 'Request failed',
+                success: false,
+                error: 'Request failed'
+            });
+            
             return { success: false, error: 'Request failed' };
         } catch (error) {
+            Storage.logApiCall({
+                action: 'Check Credits',
+                details: error.message,
+                success: false,
+                error: error.message
+            });
             return { success: false, error: error.message };
         }
     },
@@ -412,6 +435,44 @@ const API = {
     },
 
     /**
+     * Fetch rates for a specific month only
+     */
+    async fetchMonth(year, month, progressCallback = null) {
+        this.callsThisSession = 0;
+        
+        const dates = getDatesInMonth(year, month);
+        console.log(`Fetching ${MONTH_NAMES[month - 1]} ${year}: ${dates.length} days`);
+
+        const result = await this.fetchDateRange(dates, progressCallback, { 
+            fullFetch: false, // Use quick mode (1 call per date)
+            stopOnLimit: true 
+        });
+
+        // Save whatever we got
+        if (Object.keys(result.results).length > 0) {
+            const existingData = Storage.loadData() || { dates: {}, dataVersion: '2.0' };
+            Object.assign(existingData.dates, result.results);
+            existingData.lastFullUpdate = new Date().toISOString();
+            existingData.totalHotels = 15;
+            existingData.isDemo = false;
+            existingData.dataVersion = '2.0';
+            Storage.saveData(existingData);
+            Storage.setLastUpdate();
+        }
+
+        return {
+            success: !result.limitReached && result.errors.length === 0,
+            datesUpdated: result.datesCompleted,
+            datesSkipped: result.datesSkipped,
+            callsUsed: result.callsUsed,
+            limitReached: result.limitReached,
+            errors: result.errors,
+            month: month,
+            year: year
+        };
+    },
+
+    /**
      * Full update for all configured months
      */
     async fullUpdate(progressCallback = null, options = {}) {
@@ -449,6 +510,31 @@ const API = {
             Storage.saveData(existingData);
             Storage.setLastUpdate();
         }
+
+        return {
+            success: !result.limitReached && result.errors.length === 0,
+            datesUpdated: result.datesCompleted,
+            datesSkipped: result.datesSkipped,
+            callsUsed: result.callsUsed,
+            limitReached: result.limitReached,
+            errors: result.errors,
+            message: result.limitReached 
+                ? `API limit reached after ${result.datesCompleted} dates. Data saved.`
+                : `Successfully updated ${result.datesCompleted} dates.`
+        };
+
+        // Log the update
+        Storage.logApiCall({
+            action: 'Full Update',
+            details: result.limitReached 
+                ? `Fetched ${result.datesCompleted} dates, limit reached` 
+                : `Fetched ${result.datesCompleted} dates successfully`,
+            success: !result.limitReached,
+            creditsUsed: result.callsUsed,
+            datesProcessed: result.datesCompleted,
+            hotelsFound: 15,
+            error: result.limitReached ? 'API limit reached' : null
+        });
 
         return {
             success: !result.limitReached && result.errors.length === 0,
@@ -521,95 +607,38 @@ const API = {
 };
 
 /**
- * Demo Data Generator - Only generates your 15 tracked hotels
+ * Data Generator - Creates empty structure (no fake demo data)
  */
 const DemoData = {
-    // Your 15 tracked hotels with realistic base prices
+    // Your 15 tracked hotels (for reference when parsing API data)
     trackedHotels: [
-        { name: 'Riviera Motel', hotelId: 1162889, basePrice: 85, rating: 3.5, reviews: 185, category: 'yours' },
-        { name: 'American Boutique Inn', hotelId: 564648, basePrice: 92, rating: 4.0, reviews: 312, category: 'yours' },
-        { name: 'Super 8 by Wyndham Mackinaw City Bridgeview', hotelId: 234567, basePrice: 75, rating: 3.0, reviews: 420, category: 'competitor' },
-        { name: 'Vindel Motel', hotelId: 345678, basePrice: 70, rating: 3.5, reviews: 156, category: 'competitor' },
-        { name: 'Lighthouse View Motel', hotelId: 456789, basePrice: 88, rating: 4.0, reviews: 234, category: 'competitor' },
-        { name: 'Parkside Inn Bridgeview', hotelId: 567890, basePrice: 82, rating: 3.5, reviews: 189, category: 'competitor' },
-        { name: 'Rainbow Motel', hotelId: 678901, basePrice: 68, rating: 3.0, reviews: 145, category: 'competitor' },
-        { name: 'Days Inn by Wyndham Mackinaw City', hotelId: 789012, basePrice: 79, rating: 3.5, reviews: 567, category: 'competitor' },
-        { name: 'Comfort Inn Lakeside', hotelId: 890123, basePrice: 95, rating: 4.0, reviews: 423, category: 'competitor' },
-        { name: 'Quality Inn & Suites', hotelId: 901234, basePrice: 89, rating: 3.5, reviews: 389, category: 'competitor' },
-        { name: 'Baymont by Wyndham Mackinaw City', hotelId: 112233, basePrice: 77, rating: 3.5, reviews: 298, category: 'competitor' },
-        { name: 'Holiday Inn Express', hotelId: 223344, basePrice: 115, rating: 4.5, reviews: 512, category: 'competitor' },
-        { name: 'Hampton Inn Mackinaw City', hotelId: 334455, basePrice: 125, rating: 4.5, reviews: 478, category: 'competitor' },
-        { name: 'Econo Lodge', hotelId: 445566, basePrice: 65, rating: 3.0, reviews: 234, category: 'competitor' },
-        { name: "America's Best Value Inn", hotelId: 556677, basePrice: 62, rating: 2.5, reviews: 167, category: 'competitor' }
+        { name: 'Riviera Motel', hotelId: 1162889, category: 'yours' },
+        { name: 'American Boutique Inn', hotelId: 564648, category: 'yours' },
+        { name: 'Super 8 by Wyndham Mackinaw City Bridgeview', hotelId: 234567, category: 'competitor' },
+        { name: 'Vindel Motel', hotelId: 345678, category: 'competitor' },
+        { name: 'Lighthouse View Motel', hotelId: 456789, category: 'competitor' },
+        { name: 'Parkside Inn Bridgeview', hotelId: 567890, category: 'competitor' },
+        { name: 'Rainbow Motel', hotelId: 678901, category: 'competitor' },
+        { name: 'Days Inn by Wyndham Mackinaw City', hotelId: 789012, category: 'competitor' },
+        { name: 'Comfort Inn Lakeside', hotelId: 890123, category: 'competitor' },
+        { name: 'Quality Inn & Suites', hotelId: 901234, category: 'competitor' },
+        { name: 'Baymont by Wyndham Mackinaw City', hotelId: 112233, category: 'competitor' },
+        { name: 'Holiday Inn Express', hotelId: 223344, category: 'competitor' },
+        { name: 'Hampton Inn Mackinaw City', hotelId: 334455, category: 'competitor' },
+        { name: 'Econo Lodge', hotelId: 445566, category: 'competitor' },
+        { name: "America's Best Value Inn", hotelId: 556677, category: 'competitor' }
     ],
 
-    vendors: ['Booking.com', 'Expedia.com', 'Hotels.com', 'Priceline', 'Agoda.com'],
-
-    generateHotelData(date, seasonMultiplier = 1) {
-        const hotels = [];
-        const isWeekend = [0, 5, 6].includes(new Date(date).getDay());
-        const weekendBoost = isWeekend ? 18 : 0;
-
-        this.trackedHotels.forEach(hotel => {
-            const variance = (Math.random() - 0.5) * 20; // +/- $10 variance
-            const price = Math.round((hotel.basePrice * seasonMultiplier) + variance + weekendBoost);
-
-            hotels.push({
-                name: hotel.name,
-                hotelId: hotel.hotelId,
-                price: Math.max(45, price),
-                vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-                rating: hotel.rating,
-                reviewCount: hotel.reviews,
-                category: hotel.category
-            });
-        });
-
-        // Sort by price
-        hotels.sort((a, b) => a.price - b.price);
-
-        return {
-            timestamp: new Date().toISOString(),
-            date: date,
-            hotels: hotels
-        };
-    },
-
-    generateMonthData(year, month) {
-        const dates = getDatesInMonth(year, month);
-        const results = {};
-
-        // Seasonal multipliers (peak summer = higher prices)
-        const seasonMultipliers = { 5: 1.0, 6: 1.25, 7: 1.5, 8: 1.45, 9: 1.1, 10: 0.95 };
-        const multiplier = seasonMultipliers[month] || 1;
-
-        dates.forEach(date => {
-            results[date] = this.generateHotelData(date, multiplier);
-        });
-
-        return results;
-    },
-
+    /**
+     * Generate empty data structure (no demo/fake data)
+     */
     generateAllData() {
-        const { startMonth, startYear, monthsToCollect } = CONFIG.dateRange;
-        const allData = { dates: {} };
-
-        for (let i = 0; i < monthsToCollect; i++) {
-            let month = startMonth + i;
-            let year = startYear;
-            
-            if (month > 12) {
-                month -= 12;
-                year += 1;
-            }
-
-            Object.assign(allData.dates, this.generateMonthData(year, month));
-        }
-
-        allData.lastFullUpdate = new Date().toISOString();
-        allData.totalHotels = 15; // Only our tracked hotels
-        allData.isDemo = true;
-
-        return allData;
+        return {
+            dates: {},
+            lastFullUpdate: null,
+            totalHotels: 15,
+            isDemo: false,
+            dataVersion: '2.0'
+        };
     }
 };
