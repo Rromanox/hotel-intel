@@ -365,14 +365,25 @@ const API = {
 
     /**
      * Save multiple dates to database
+     * Falls back to individual saves if bulk fails
      */
     async saveBulkToDatabase(dates) {
+        const dateKeys = Object.keys(dates);
+        if (dateKeys.length === 0) return true;
+        
         try {
             const response = await fetch(`${CONFIG.api.ratesUrl}/bulk`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ dates })
             });
+            
+            // Check for payload too large error
+            if (response.status === 413) {
+                console.log('⚠️ Bulk payload too large, saving in chunks...');
+                return await this.saveInChunks(dates);
+            }
+            
             const result = await response.json();
             if (result.success) {
                 console.log(`💾 Bulk saved ${result.datesUpdated} dates to database`);
@@ -380,8 +391,49 @@ const API = {
             return result.success;
         } catch (error) {
             console.error('❌ Database bulk save error:', error.message);
-            return false;
+            // Fallback to chunked saving
+            console.log('⚠️ Falling back to chunked saving...');
+            return await this.saveInChunks(dates);
         }
+    },
+
+    /**
+     * Save dates in smaller chunks
+     */
+    async saveInChunks(dates, chunkSize = 5) {
+        const dateKeys = Object.keys(dates);
+        let successCount = 0;
+        
+        for (let i = 0; i < dateKeys.length; i += chunkSize) {
+            const chunk = {};
+            dateKeys.slice(i, i + chunkSize).forEach(key => {
+                chunk[key] = dates[key];
+            });
+            
+            try {
+                const response = await fetch(`${CONFIG.api.ratesUrl}/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dates: chunk })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        successCount += Object.keys(chunk).length;
+                        console.log(`💾 Saved chunk: ${Object.keys(chunk).length} dates`);
+                    }
+                }
+            } catch (error) {
+                console.error(`❌ Chunk save error:`, error.message);
+            }
+            
+            // Small delay between chunks
+            await this.delay(100);
+        }
+        
+        console.log(`💾 Chunked save complete: ${successCount}/${dateKeys.length} dates`);
+        return successCount > 0;
     },
 
     /**
