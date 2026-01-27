@@ -13,13 +13,12 @@ const CONFIG = {
         directUrl: 'https://api.makcorps.com/city',
         
         // Render Proxy URL (secure - API key stored on server)
-        // UPDATE THIS after deploying to Render!
-        proxyUrl: 'https://hotel-intel-api-awb4.onrender.com/api/city', // e.g., 'https://your-app-name.onrender.com/api/city'
+        proxyUrl: 'https://hotel-intel-api-awb4.onrender.com/api/city',
         
-        // Set to 'proxy' for secure multi-device, or 'direct' for localStorage key
-        mode: 'proxy', // Change to 'proxy' after setting up Render
+        // Using proxy mode for secure multi-device access
+        mode: 'proxy',
         
-        // Only used in 'direct' mode - leave empty, enter in Settings page
+        // Only used in 'direct' mode
         apiKey: '',
         
         cityId: '42424', // Mackinaw City

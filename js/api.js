@@ -73,9 +73,15 @@ const API = {
 
     /**
      * Extract hotel data from API response item
+     * ONLY keeps hotels that are in our tracked list (15 hotels)
      */
     extractHotelData(item) {
         if (!item || !item.name) return null;
+
+        // FILTER: Only keep tracked hotels (yours + competitors)
+        if (!isTrackedHotel(item.name)) {
+            return null; // Skip hotels we don't care about
+        }
 
         // Get the lowest price from up to 4 vendors
         let lowestPrice = null;
@@ -102,7 +108,8 @@ const API = {
             price: lowestPrice,
             vendor: lowestVendor,
             rating: item.reviews?.rating || null,
-            reviewCount: item.reviews?.count || null
+            reviewCount: item.reviews?.count || null,
+            category: getHotelCategory(item.name) // 'yours' or 'competitor'
         };
     },
 
@@ -514,122 +521,51 @@ const API = {
 };
 
 /**
- * Demo Data Generator - For testing without API calls
+ * Demo Data Generator - Only generates your 15 tracked hotels
  */
 const DemoData = {
-    hotelNames: [
-        'Riviera Motel',
-        'American Boutique Inn',
-        'Super 8 by Wyndham Mackinaw City Bridgeview',
-        'Vindel Motel',
-        'Lighthouse View Motel',
-        'Parkside Inn Bridgeview',
-        'Rainbow Motel',
-        'Mackinaw Beach Hotel',
-        'Bridge View Lodge',
-        'Northern Lights Inn',
-        'Lakefront Resort',
-        'Captain\'s Quarters',
-        'Historic Mackinaw Hotel',
-        'Pine Grove Motel',
-        'Waterfront Suites',
-        'Sunset Bay Resort',
-        'Colonial House Inn',
-        'Mackinaw Motor Lodge',
-        'Harbor Springs Hotel',
-        'Straits Area Resort',
-        'Wilderness Lodge',
-        'Birchwood Inn',
-        'Fort Mackinaw Inn',
-        'Victorian Inn',
-        'Comfort Stay Motel',
-        'Grand View Suites',
-        'Lakeshore Hotel',
-        'Mackinaw City Inn',
-        'Budget Inn Express',
-        'Quality Inn Lakeside',
-        'Days Inn Mackinaw',
-        'Holiday Inn Express',
-        'Hampton Inn Mackinaw',
-        'Best Western Lakefront',
-        'Ramada by Wyndham',
-        'Fairfield Inn Mackinaw',
-        'Courtyard by Marriott',
-        'Baymont Inn',
-        'La Quinta Inn',
-        'Sleep Inn & Suites'
+    // Your 15 tracked hotels with realistic base prices
+    trackedHotels: [
+        { name: 'Riviera Motel', hotelId: 1162889, basePrice: 85, rating: 3.5, reviews: 185, category: 'yours' },
+        { name: 'American Boutique Inn', hotelId: 564648, basePrice: 92, rating: 4.0, reviews: 312, category: 'yours' },
+        { name: 'Super 8 by Wyndham Mackinaw City Bridgeview', hotelId: 234567, basePrice: 75, rating: 3.0, reviews: 420, category: 'competitor' },
+        { name: 'Vindel Motel', hotelId: 345678, basePrice: 70, rating: 3.5, reviews: 156, category: 'competitor' },
+        { name: 'Lighthouse View Motel', hotelId: 456789, basePrice: 88, rating: 4.0, reviews: 234, category: 'competitor' },
+        { name: 'Parkside Inn Bridgeview', hotelId: 567890, basePrice: 82, rating: 3.5, reviews: 189, category: 'competitor' },
+        { name: 'Rainbow Motel', hotelId: 678901, basePrice: 68, rating: 3.0, reviews: 145, category: 'competitor' },
+        { name: 'Days Inn by Wyndham Mackinaw City', hotelId: 789012, basePrice: 79, rating: 3.5, reviews: 567, category: 'competitor' },
+        { name: 'Comfort Inn Lakeside', hotelId: 890123, basePrice: 95, rating: 4.0, reviews: 423, category: 'competitor' },
+        { name: 'Quality Inn & Suites', hotelId: 901234, basePrice: 89, rating: 3.5, reviews: 389, category: 'competitor' },
+        { name: 'Baymont by Wyndham Mackinaw City', hotelId: 112233, basePrice: 77, rating: 3.5, reviews: 298, category: 'competitor' },
+        { name: 'Holiday Inn Express', hotelId: 223344, basePrice: 115, rating: 4.5, reviews: 512, category: 'competitor' },
+        { name: 'Hampton Inn Mackinaw City', hotelId: 334455, basePrice: 125, rating: 4.5, reviews: 478, category: 'competitor' },
+        { name: 'Econo Lodge', hotelId: 445566, basePrice: 65, rating: 3.0, reviews: 234, category: 'competitor' },
+        { name: "America's Best Value Inn", hotelId: 556677, basePrice: 62, rating: 2.5, reviews: 167, category: 'competitor' }
     ],
 
     vendors: ['Booking.com', 'Expedia.com', 'Hotels.com', 'Priceline', 'Agoda.com'],
 
-    generateHotelData(date, basePrice = 85) {
+    generateHotelData(date, seasonMultiplier = 1) {
         const hotels = [];
-        const usedNames = new Set();
-        const numHotels = 30 + Math.floor(Math.random() * 10);
         const isWeekend = [0, 5, 6].includes(new Date(date).getDay());
-        const weekendBoost = isWeekend ? 20 : 0;
+        const weekendBoost = isWeekend ? 18 : 0;
 
-        // Your hotels first
-        hotels.push({
-            name: 'Riviera Motel',
-            hotelId: 1162889,
-            price: Math.round(basePrice + (Math.random() * 15) - 5 + weekendBoost),
-            vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-            rating: 3.5,
-            reviewCount: 185
-        });
-        usedNames.add('Riviera Motel');
-
-        hotels.push({
-            name: 'American Boutique Inn',
-            hotelId: 564648,
-            price: Math.round(basePrice + 8 + (Math.random() * 15) - 5 + weekendBoost),
-            vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-            rating: 4.0,
-            reviewCount: 312
-        });
-        usedNames.add('American Boutique Inn');
-
-        // Competitors with realistic names
-        const competitorPrices = {
-            'Super 8 by Wyndham Mackinaw City Bridgeview': basePrice - 10,
-            'Vindel Motel': basePrice - 5,
-            'Lighthouse View Motel': basePrice + 5,
-            'Parkside Inn Bridgeview': basePrice,
-            'Rainbow Motel': basePrice - 8
-        };
-
-        Object.entries(competitorPrices).forEach(([name, price]) => {
-            hotels.push({
-                name: name,
-                hotelId: 100000 + Math.floor(Math.random() * 900000),
-                price: Math.round(price + (Math.random() * 20) - 10 + weekendBoost),
-                vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-                rating: 3 + Math.random() * 1.5,
-                reviewCount: 50 + Math.floor(Math.random() * 300)
-            });
-            usedNames.add(name);
-        });
-
-        // Fill rest with random hotels
-        for (let i = hotels.length; i < numHotels; i++) {
-            let name;
-            do {
-                name = this.hotelNames[Math.floor(Math.random() * this.hotelNames.length)];
-            } while (usedNames.has(name));
-            
-            usedNames.add(name);
+        this.trackedHotels.forEach(hotel => {
+            const variance = (Math.random() - 0.5) * 20; // +/- $10 variance
+            const price = Math.round((hotel.basePrice * seasonMultiplier) + variance + weekendBoost);
 
             hotels.push({
-                name: name,
-                hotelId: 100000 + Math.floor(Math.random() * 900000),
-                price: Math.max(49, Math.round(basePrice + (Math.random() - 0.5) * 60 + weekendBoost)),
+                name: hotel.name,
+                hotelId: hotel.hotelId,
+                price: Math.max(45, price),
                 vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-                rating: 2.5 + Math.random() * 2.5,
-                reviewCount: 10 + Math.floor(Math.random() * 400)
+                rating: hotel.rating,
+                reviewCount: hotel.reviews,
+                category: hotel.category
             });
-        }
+        });
 
+        // Sort by price
         hotels.sort((a, b) => a.price - b.price);
 
         return {
@@ -643,12 +579,12 @@ const DemoData = {
         const dates = getDatesInMonth(year, month);
         const results = {};
 
-        // Seasonal base prices
-        const monthPrices = { 5: 89, 6: 115, 7: 139, 8: 135, 9: 99 };
-        const basePrice = monthPrices[month] || 100;
+        // Seasonal multipliers (peak summer = higher prices)
+        const seasonMultipliers = { 5: 1.0, 6: 1.25, 7: 1.5, 8: 1.45, 9: 1.1 };
+        const multiplier = seasonMultipliers[month] || 1;
 
         dates.forEach(date => {
-            results[date] = this.generateHotelData(date, basePrice);
+            results[date] = this.generateHotelData(date, multiplier);
         });
 
         return results;
@@ -671,7 +607,7 @@ const DemoData = {
         }
 
         allData.lastFullUpdate = new Date().toISOString();
-        allData.totalHotels = 40;
+        allData.totalHotels = 15; // Only our tracked hotels
         allData.isDemo = true;
 
         return allData;
