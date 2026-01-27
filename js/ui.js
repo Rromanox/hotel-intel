@@ -185,47 +185,55 @@ const UI = {
     bindEvents() {
         // Mobile menu toggle
         const sidebarOverlay = document.getElementById('sidebar-overlay');
+        let touchHandled = false;
         
-        // Click event for desktop
-        this.elements.mobileMenuToggle?.addEventListener('click', () => {
-            this.elements.sidebar.classList.toggle('open');
-            sidebarOverlay?.classList.toggle('active');
-        });
-        
-        // Touch event for mobile (Safari fix)
+        // Touch event for mobile (fires first on touch devices)
         this.elements.mobileMenuToggle?.addEventListener('touchend', (e) => {
             e.preventDefault();
+            touchHandled = true;
+            this.elements.sidebar.classList.toggle('open');
+            sidebarOverlay?.classList.toggle('active');
+            // Reset flag after a short delay
+            setTimeout(() => { touchHandled = false; }, 100);
+        });
+        
+        // Click event for desktop (skip if touch already handled)
+        this.elements.mobileMenuToggle?.addEventListener('click', () => {
+            if (touchHandled) return;
             this.elements.sidebar.classList.toggle('open');
             sidebarOverlay?.classList.toggle('active');
         });
         
-        // Close sidebar when clicking overlay
-        sidebarOverlay?.addEventListener('click', () => {
-            this.elements.sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('active');
-        });
-        
-        // Touch event for overlay (Safari fix)
+        // Close sidebar when clicking/touching overlay
         sidebarOverlay?.addEventListener('touchend', (e) => {
             e.preventDefault();
+            touchHandled = true;
+            this.elements.sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+            setTimeout(() => { touchHandled = false; }, 100);
+        });
+        
+        sidebarOverlay?.addEventListener('click', () => {
+            if (touchHandled) return;
             this.elements.sidebar.classList.remove('open');
             sidebarOverlay.classList.remove('active');
         });
 
         // Navigation
         this.elements.navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = item.dataset.page;
-                this.navigateTo(page);
-                // Close mobile sidebar after navigation
-                this.elements.sidebar.classList.remove('open');
-                sidebarOverlay?.classList.remove('active');
-            });
-            
-            // Touch event for nav items (Safari fix)
             item.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                touchHandled = true;
+                const page = item.dataset.page;
+                this.navigateTo(page);
+                this.elements.sidebar.classList.remove('open');
+                sidebarOverlay?.classList.remove('active');
+                setTimeout(() => { touchHandled = false; }, 100);
+            });
+            
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (touchHandled) return;
                 const page = item.dataset.page;
                 this.navigateTo(page);
                 // Close mobile sidebar after navigation
