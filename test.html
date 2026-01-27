@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #1a1a2e;
+            color: white;
+        }
+        .success {
+            color: #4ade80;
+            font-size: 24px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        button {
+            background: #fbbf24;
+            color: black;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        #output {
+            background: #000;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏨 Mackinaw Intel - Debug Test</h1>
+    <p class="success">✅ HTML is loading correctly!</p>
+    
+    <div class="info">
+        <strong>Step 1:</strong> If you see this page, HTML works.
+    </div>
+    
+    <button onclick="testJS()">Test JavaScript</button>
+    <button onclick="testStorage()">Test Storage</button>
+    <button onclick="testAll()">Test All Modules</button>
+    <button onclick="window.location.href='index.html'">Go to Main App</button>
+    
+    <div id="output">Click a button to test...</div>
+
+    <script>
+        function log(msg) {
+            document.getElementById('output').textContent += msg + '\n';
+            console.log(msg);
+        }
+        
+        function testJS() {
+            document.getElementById('output').textContent = '';
+            log('✅ JavaScript is working!');
+            log('Browser: ' + navigator.userAgent);
+        }
+        
+        function testStorage() {
+            document.getElementById('output').textContent = '';
+            try {
+                localStorage.setItem('test', 'hello');
+                const val = localStorage.getItem('test');
+                localStorage.removeItem('test');
+                log('✅ localStorage works! Value: ' + val);
+            } catch(e) {
+                log('❌ localStorage error: ' + e.message);
+            }
+        }
+        
+        function testAll() {
+            document.getElementById('output').textContent = '';
+            log('Testing all modules...\n');
+            
+            // Test if scripts are loaded
+            log('CONFIG: ' + (typeof CONFIG !== 'undefined' ? '✅ Loaded' : '❌ Not found'));
+            log('Storage: ' + (typeof Storage !== 'undefined' ? '✅ Loaded' : '❌ Not found'));
+            log('API: ' + (typeof API !== 'undefined' ? '✅ Loaded' : '❌ Not found'));
+            log('Charts: ' + (typeof Charts !== 'undefined' ? '✅ Loaded' : '❌ Not found'));
+            log('UI: ' + (typeof UI !== 'undefined' ? '✅ Loaded' : '❌ Not found'));
+            log('App: ' + (typeof App !== 'undefined' ? '✅ Loaded' : '❌ Not found'));
+            log('DemoData: ' + (typeof DemoData !== 'undefined' ? '✅ Loaded' : '❌ Not found'));
+            
+            if (typeof DemoData !== 'undefined') {
+                log('\nTrying to generate demo data...');
+                try {
+                    const data = DemoData.generateAllData();
+                    log('✅ Demo data generated! Hotels: ' + data.totalHotels);
+                    log('Dates: ' + Object.keys(data.dates).length);
+                } catch(e) {
+                    log('❌ Demo data error: ' + e.message);
+                }
+            }
+        }
+    </script>
+    
+    <!-- Load the app scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
