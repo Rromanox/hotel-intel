@@ -186,7 +186,15 @@ const UI = {
         // Mobile menu toggle
         const sidebarOverlay = document.getElementById('sidebar-overlay');
         
+        // Click event for desktop
         this.elements.mobileMenuToggle?.addEventListener('click', () => {
+            this.elements.sidebar.classList.toggle('open');
+            sidebarOverlay?.classList.toggle('active');
+        });
+        
+        // Touch event for mobile (Safari fix)
+        this.elements.mobileMenuToggle?.addEventListener('touchend', (e) => {
+            e.preventDefault();
             this.elements.sidebar.classList.toggle('open');
             sidebarOverlay?.classList.toggle('active');
         });
@@ -196,10 +204,27 @@ const UI = {
             this.elements.sidebar.classList.remove('open');
             sidebarOverlay.classList.remove('active');
         });
+        
+        // Touch event for overlay (Safari fix)
+        sidebarOverlay?.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.elements.sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        });
 
         // Navigation
         this.elements.navItems.forEach(item => {
             item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = item.dataset.page;
+                this.navigateTo(page);
+                // Close mobile sidebar after navigation
+                this.elements.sidebar.classList.remove('open');
+                sidebarOverlay?.classList.remove('active');
+            });
+            
+            // Touch event for nav items (Safari fix)
+            item.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 const page = item.dataset.page;
                 this.navigateTo(page);
@@ -1578,7 +1603,12 @@ const UI = {
             
             if (savedCount > 0) {
                 existingData.lastFullUpdate = new Date().toISOString();
-                existingData.totalHotels = 15;
+                // Count unique hotels across all dates
+                const allHotels = new Set();
+                Object.values(existingData.dates).forEach(d => {
+                    d.hotels?.forEach(h => allHotels.add(h.name));
+                });
+                existingData.totalHotels = allHotels.size;
                 existingData.isDemo = false;
                 existingData.dataVersion = '2.0';
                 Storage.saveData(existingData);
@@ -1596,7 +1626,7 @@ const UI = {
             success: !result.limitReached,
             creditsUsed: result.callsUsed,
             datesProcessed: result.datesCompleted,
-            hotelsFound: 15,
+            hotelsFound: Object.values(result.results)[0]?.hotels?.length || 0,
             error: result.limitReached ? 'API limit reached' : null
         });
 
@@ -1662,7 +1692,12 @@ const UI = {
             
             if (savedCount > 0) {
                 existingData.lastFullUpdate = new Date().toISOString();
-                existingData.totalHotels = 15;
+                // Count unique hotels across all dates
+                const allHotels = new Set();
+                Object.values(existingData.dates).forEach(d => {
+                    d.hotels?.forEach(h => allHotels.add(h.name));
+                });
+                existingData.totalHotels = allHotels.size;
                 existingData.isDemo = false;
                 existingData.dataVersion = '2.0';
                 Storage.saveData(existingData);
@@ -1680,7 +1715,7 @@ const UI = {
             success: !result.limitReached,
             creditsUsed: result.callsUsed,
             datesProcessed: result.datesCompleted,
-            hotelsFound: 15,
+            hotelsFound: Object.values(result.results)[0]?.hotels?.length || 0,
             error: result.limitReached ? 'API limit reached' : null
         });
 

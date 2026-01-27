@@ -133,7 +133,10 @@ function isTrackedCompetitor(hotelName) {
 /**
  * Check if hotel should be highlighted (your hotel OR tracked competitor)
  */
-function isTrackedHotel(hotelName) {
+function isTrackedHotel(hotelName, onlyYours = false) {
+    if (onlyYours) {
+        return isYourHotel(hotelName);
+    }
     return isYourHotel(hotelName) || isTrackedCompetitor(hotelName);
 }
 
@@ -143,8 +146,7 @@ function isTrackedHotel(hotelName) {
  */
 function getHotelCategory(hotelName) {
     if (isYourHotel(hotelName)) return 'yours';
-    if (isTrackedCompetitor(hotelName)) return 'competitor';
-    return 'market';
+    return 'competitor'; // All other hotels are competitors now
 }
 
 /**

@@ -43,23 +43,21 @@ const API = {
 
     /**
      * Extract hotel data from SerpAPI property
-     * ONLY keeps hotels that are in our tracked list
+     * Returns ALL hotels from the API (no filtering)
      */
     extractHotelData(property) {
         if (!property || !property.name) return null;
 
-        // FILTER: Only keep tracked hotels (yours + competitors)
-        if (!isTrackedHotel(property.name)) {
-            return null;
-        }
-
         // Get price from SerpAPI format
         const price = property.rate_per_night?.extracted_lowest || 
-                      property.rate_per_night?.lowest ? this.parsePrice(property.rate_per_night.lowest) : 
+                      (property.rate_per_night?.lowest ? this.parsePrice(property.rate_per_night.lowest) : null) ||
                       property.total_rate?.extracted_lowest ||
                       null;
 
         if (!price) return null;
+
+        // Check if this is one of YOUR hotels
+        const isYourHotel = isTrackedHotel(property.name, true); // true = only check yourHotels
 
         return {
             name: property.name,
@@ -67,9 +65,10 @@ const API = {
             vendor: property.rate_per_night?.source || 'Google Hotels',
             rating: property.overall_rating || null,
             reviewCount: property.reviews || null,
-            category: getHotelCategory(property.name),
+            category: isYourHotel ? 'yours' : 'competitor',
             hotelClass: property.hotel_class || null,
-            type: property.type || 'hotel'
+            type: property.type || 'hotel',
+            isYourHotel: isYourHotel
         };
     },
 

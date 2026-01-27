@@ -2997,7 +2997,8 @@ body {
 }
 
 .login-screen.hidden {
-    display: none;
+    display: none !important;
+    pointer-events: none;
 }
 
 .login-container {
