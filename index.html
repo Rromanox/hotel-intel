@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mackinaw Intel | Hotel Rate Intelligence Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loader">
+            <div class="loader-ring"></div>
+            <div class="loader-text">Initializing Intel Platform...</div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6"/>
+                        </svg>
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-primary">Mackinaw</span>
+                        <span class="logo-secondary">Intel</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <span class="nav-section-title">Overview</span>
+                    <a href="#" class="nav-item active" data-page="dashboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
+                            <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <span class="nav-section-title">Rate Analysis</span>
+                    <a href="#" class="nav-item" data-page="monthly">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <span>Monthly Views</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="analytics">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                        <span>Analytics Hub</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="competitors">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        <span>Competitor Intel</span>
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <span class="nav-section-title">Management</span>
+                    <a href="#" class="nav-item" data-page="settings">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        <span>Settings</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="update-status">
+                    <div class="status-indicator online"></div>
+                    <div class="status-text">
+                        <span class="status-label">Last Updated</span>
+                        <span class="status-time" id="last-update-time">--</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header Bar -->
+            <header class="top-bar">
+                <button class="mobile-menu-toggle" id="mobile-menu-toggle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                
+                <div class="header-left">
+                    <h1 class="page-title" id="page-title">Dashboard</h1>
+                    <div class="breadcrumb">
+                        <span>Mackinaw City Market Intelligence</span>
+                    </div>
+                </div>
+                
+                <div class="header-right">
+                    <div class="date-range-display">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <span id="current-date-range">May 2026</span>
+                    </div>
+                    
+                    <button class="btn btn-secondary" id="manual-update-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                        <span>Update Data</span>
+                    </button>
+                    
+                    <div class="theme-toggle" id="theme-toggle">
+                        <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                        </svg>
+                        <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                        </svg>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <!-- Hero Stats Section -->
+                <section class="hero-stats">
+                    <div class="hero-card primary">
+                        <div class="hero-content">
+                            <div class="hero-label">Hotels Monitored</div>
+                            <div class="hero-value" id="total-hotels">--</div>
+                            <div class="hero-subtitle">Mackinaw City Market</div>
+                        </div>
+                        <div class="hero-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="hero-card accent">
+                        <div class="hero-content">
+                            <div class="hero-label">Your Portfolio Avg</div>
+                            <div class="hero-value">$<span id="portfolio-avg">--</span></div>
+                            <div class="hero-subtitle">Riviera & American Boutique</div>
+                        </div>
+                        <div class="hero-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="hero-card">
+                        <div class="hero-content">
+                            <div class="hero-label">Market Position</div>
+                            <div class="hero-value">#<span id="market-position">--</span></div>
+                            <div class="hero-subtitle" id="position-change">vs. last period</div>
+                        </div>
+                        <div class="hero-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="hero-card">
+                        <div class="hero-content">
+                            <div class="hero-label">Next Auto-Update</div>
+                            <div class="hero-value" id="next-update">--</div>
+                            <div class="hero-subtitle">15-day cycle</div>
+                        </div>
+                        <div class="hero-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Your Hotels Spotlight -->
+                <section class="your-hotels-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <span class="title-icon">★</span>
+                            Your Properties
+                        </h2>
+                        <span class="section-badge">Live Tracking</span>
+                    </div>
+                    
+                    <div class="your-hotels-grid">
+                        <div class="hotel-spotlight-card" id="riviera-card">
+                            <div class="spotlight-header">
+                                <div class="hotel-name-badge">
+                                    <span class="badge-icon">🏨</span>
+                                    <span>Riviera Motel</span>
+                                </div>
+                                <span class="hotel-id">ID: 1162889</span>
+                            </div>
+                            <div class="spotlight-body">
+                                <div class="rate-display">
+                                    <span class="rate-currency">$</span>
+                                    <span class="rate-value" id="riviera-rate">--</span>
+                                    <span class="rate-period">/night</span>
+                                </div>
+                                <div class="rate-meta">
+                                    <div class="rate-change positive" id="riviera-change">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="18 15 12 9 6 15"/>
+                                        </svg>
+                                        <span>--</span>
+                                    </div>
+                                    <div class="vendor-badge" id="riviera-vendor">--</div>
+                                </div>
+                            </div>
+                            <div class="spotlight-footer">
+                                <div class="metric">
+                                    <span class="metric-label">Market Rank</span>
+                                    <span class="metric-value" id="riviera-rank">#--</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Rating</span>
+                                    <span class="metric-value" id="riviera-rating">--★</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="hotel-spotlight-card" id="american-card">
+                            <div class="spotlight-header">
+                                <div class="hotel-name-badge">
+                                    <span class="badge-icon">🏨</span>
+                                    <span>American Boutique Inn</span>
+                                </div>
+                                <span class="hotel-id">ID: 564648</span>
+                            </div>
+                            <div class="spotlight-body">
+                                <div class="rate-display">
+                                    <span class="rate-currency">$</span>
+                                    <span class="rate-value" id="american-rate">--</span>
+                                    <span class="rate-period">/night</span>
+                                </div>
+                                <div class="rate-meta">
+                                    <div class="rate-change positive" id="american-change">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="18 15 12 9 6 15"/>
+                                        </svg>
+                                        <span>--</span>
+                                    </div>
+                                    <div class="vendor-badge" id="american-vendor">--</div>
+                                </div>
+                            </div>
+                            <div class="spotlight-footer">
+                                <div class="metric">
+                                    <span class="metric-label">Market Rank</span>
+                                    <span class="metric-value" id="american-rank">#--</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Rating</span>
+                                    <span class="metric-value" id="american-rating">--★</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Market Overview Grid -->
+                <section class="market-overview">
+                    <div class="section-header">
+                        <h2 class="section-title">Market Overview</h2>
+                        <div class="section-actions">
+                            <select id="date-selector" class="date-select">
+                                <option value="">Select Date</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon low">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-label">Lowest Rate</span>
+                                <span class="metric-value">$<span id="lowest-rate">--</span></span>
+                                <span class="metric-hotel" id="lowest-hotel">--</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon high">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="18 15 12 9 6 15"/>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-label">Highest Rate</span>
+                                <span class="metric-value">$<span id="highest-rate">--</span></span>
+                                <span class="metric-hotel" id="highest-hotel">--</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon avg">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-label">Market Average</span>
+                                <span class="metric-value">$<span id="market-avg">--</span></span>
+                                <span class="metric-hotel" id="avg-count">-- hotels</span>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-icon spread">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 12h-4l-3 9L9 3l-3 9H3"/>
+                                </svg>
+                            </div>
+                            <div class="metric-content">
+                                <span class="metric-label">Price Spread</span>
+                                <span class="metric-value">$<span id="price-spread">--</span></span>
+                                <span class="metric-hotel">Range variance</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Month Navigation -->
+                <section class="month-nav-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Quick Navigation</h2>
+                    </div>
+                    <div class="month-buttons">
+                        <button class="month-btn active" data-month="2026-05">
+                            <span class="month-name">May</span>
+                            <span class="month-year">2026</span>
+                        </button>
+                        <button class="month-btn" data-month="2026-06">
+                            <span class="month-name">June</span>
+                            <span class="month-year">2026</span>
+                        </button>
+                        <button class="month-btn" data-month="2026-07">
+                            <span class="month-name">July</span>
+                            <span class="month-year">2026</span>
+                        </button>
+                        <button class="month-btn" data-month="2026-08">
+                            <span class="month-name">August</span>
+                            <span class="month-year">2026</span>
+                        </button>
+                        <button class="month-btn" data-month="2026-09">
+                            <span class="month-name">September</span>
+                            <span class="month-year">2026</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Rate Trend Chart -->
+                <section class="chart-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Rate Trends</h2>
+                        <div class="chart-legend">
+                            <span class="legend-item your-hotel">
+                                <span class="legend-color"></span> Your Properties
+                            </span>
+                            <span class="legend-item market">
+                                <span class="legend-color"></span> Market Average
+                            </span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="rate-trend-chart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Recent Activity & Top Hotels -->
+                <div class="dashboard-grid">
+                    <section class="top-hotels-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Market Leaders</h2>
+                            <span class="section-badge">Top 10</span>
+                        </div>
+                        <div class="hotels-table-wrapper">
+                            <table class="hotels-table" id="top-hotels-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Hotel</th>
+                                        <th>Rate</th>
+                                        <th>Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    
+                    <section class="activity-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Recent Changes</h2>
+                        </div>
+                        <div class="activity-feed" id="activity-feed">
+                            <!-- Populated by JS -->
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Monthly Views Page -->
+            <div class="page" id="page-monthly">
+                <section class="calendar-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Monthly Rate Calendar</h2>
+                        <div class="calendar-nav">
+                            <button class="cal-nav-btn" id="prev-month">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="15 18 9 12 15 6"/>
+                                </svg>
+                            </button>
+                            <span class="current-month" id="calendar-month">May 2026</span>
+                            <button class="cal-nav-btn" id="next-month">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="9 18 15 12 9 6"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="calendar-grid" id="calendar-grid">
+                        <!-- Calendar populated by JS -->
+                    </div>
+                </section>
+                
+                <section class="day-detail-section" id="day-detail">
+                    <div class="section-header">
+                        <h2 class="section-title">Day Details</h2>
+                        <span class="selected-date" id="selected-date">Select a date</span>
+                    </div>
+                    <div class="day-rates-list" id="day-rates-list">
+                        <p class="placeholder-text">Click on a date to view hotel rates</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Analytics Hub Page -->
+            <div class="page" id="page-analytics">
+                <div class="analytics-grid">
+                    <section class="chart-section full-width">
+                        <div class="section-header">
+                            <h2 class="section-title">Price Distribution</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="price-distribution-chart"></canvas>
+                        </div>
+                    </section>
+                    
+                    <section class="chart-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Your Properties vs Market</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="comparison-chart"></canvas>
+                        </div>
+                    </section>
+                    
+                    <section class="chart-section">
+                        <div class="section-header">
+                            <h2 class="section-title">Market Position Over Time</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="position-chart"></canvas>
+                        </div>
+                    </section>
+                </div>
+                
+                <!-- Pricing Calculator -->
+                <section class="calculator-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Revenue Impact Calculator</h2>
+                    </div>
+                    <div class="calculator-grid">
+                        <div class="calc-input-group">
+                            <label>Current Rate</label>
+                            <input type="number" id="calc-current-rate" value="95" min="0">
+                        </div>
+                        <div class="calc-input-group">
+                            <label>Proposed Rate</label>
+                            <input type="number" id="calc-proposed-rate" value="105" min="0">
+                        </div>
+                        <div class="calc-input-group">
+                            <label>Rooms Available</label>
+                            <input type="number" id="calc-rooms" value="50" min="1">
+                        </div>
+                        <div class="calc-input-group">
+                            <label>Days in Period</label>
+                            <input type="number" id="calc-days" value="30" min="1">
+                        </div>
+                        <div class="calc-result">
+                            <span class="result-label">Potential Revenue Impact</span>
+                            <span class="result-value" id="calc-result">$0</span>
+                            <span class="result-subtitle" id="calc-subtitle">per period at 100% occupancy</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Competitor Intel Page -->
+            <div class="page" id="page-competitors">
+                <section class="competitor-filters">
+                    <div class="filter-group">
+                        <label>Sort By</label>
+                        <select id="comp-sort">
+                            <option value="price-asc">Price: Low to High</option>
+                            <option value="price-desc">Price: High to Low</option>
+                            <option value="rating-desc">Rating: High to Low</option>
+                            <option value="name">Name: A-Z</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Price Range</label>
+                        <select id="comp-price-filter">
+                            <option value="all">All Prices</option>
+                            <option value="budget">Budget ($0-$75)</option>
+                            <option value="mid">Mid-Range ($75-$125)</option>
+                            <option value="premium">Premium ($125+)</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Date</label>
+                        <select id="comp-date">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="export-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Export CSV
+                    </button>
+                </section>
+                
+                <section class="competitor-table-section">
+                    <div class="table-scroll">
+                        <table class="competitor-table" id="competitor-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Hotel Name</th>
+                                    <th>Rate</th>
+                                    <th>Change</th>
+                                    <th>Vendor</th>
+                                    <th>Rating</th>
+                                    <th>Reviews</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="page-settings">
+                <div class="settings-grid">
+                    <section class="settings-section">
+                        <h3 class="settings-title">API Configuration</h3>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">MakCorp API Key</span>
+                                <span class="setting-desc">Your API key for hotel data access</span>
+                            </div>
+                            <input type="password" id="api-key-input" class="setting-input" placeholder="Enter API Key">
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">City ID</span>
+                                <span class="setting-desc">Mackinaw City identifier</span>
+                            </div>
+                            <input type="text" id="city-id-input" class="setting-input" value="42424" readonly>
+                        </div>
+                    </section>
+                    
+                    <section class="settings-section">
+                        <h3 class="settings-title">Update Schedule</h3>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">Auto-Update Interval</span>
+                                <span class="setting-desc">How often to refresh data automatically</span>
+                            </div>
+                            <select id="update-interval" class="setting-input">
+                                <option value="7">Every 7 days</option>
+                                <option value="15" selected>Every 15 days</option>
+                                <option value="30">Every 30 days</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">Last Successful Update</span>
+                                <span class="setting-desc">Most recent data collection</span>
+                            </div>
+                            <span class="setting-value" id="last-successful-update">--</span>
+                        </div>
+                    </section>
+                    
+                    <section class="settings-section">
+                        <h3 class="settings-title">Your Properties</h3>
+                        <div class="property-tags">
+                            <div class="property-tag">
+                                <span>Riviera Motel</span>
+                                <span class="tag-id">ID: 1162889</span>
+                            </div>
+                            <div class="property-tag">
+                                <span>American Boutique Inn</span>
+                                <span class="tag-id">ID: 564648</span>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <section class="settings-section">
+                        <h3 class="settings-title">Data Management</h3>
+                        <div class="button-row">
+                            <button class="btn btn-secondary" id="clear-cache-btn">
+                                Clear Cache
+                            </button>
+                            <button class="btn btn-secondary" id="export-all-btn">
+                                Export All Data
+                            </button>
+                            <button class="btn btn-primary" id="force-update-btn">
+                                Force Full Update
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Data Update Modal -->
+    <div class="modal" id="update-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Updating Data...</h3>
+            </div>
+            <div class="modal-body">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="update-progress"></div>
+                </div>
+                <p class="progress-text" id="update-status">Initializing...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
