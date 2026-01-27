@@ -185,55 +185,33 @@ const UI = {
     bindEvents() {
         // Mobile menu toggle
         const sidebarOverlay = document.getElementById('sidebar-overlay');
-        let touchHandled = false;
         
-        // Touch event for mobile (fires first on touch devices)
-        this.elements.mobileMenuToggle?.addEventListener('touchend', (e) => {
+        // Use pointerup - works on both touch and mouse
+        this.elements.mobileMenuToggle?.addEventListener('pointerup', (e) => {
             e.preventDefault();
-            touchHandled = true;
-            this.elements.sidebar.classList.toggle('open');
-            sidebarOverlay?.classList.toggle('active');
-            // Reset flag after a short delay
-            setTimeout(() => { touchHandled = false; }, 100);
-        });
-        
-        // Click event for desktop (skip if touch already handled)
-        this.elements.mobileMenuToggle?.addEventListener('click', () => {
-            if (touchHandled) return;
-            this.elements.sidebar.classList.toggle('open');
-            sidebarOverlay?.classList.toggle('active');
+            e.stopPropagation();
+            if (this.elements.sidebar.classList.contains('open')) {
+                this.elements.sidebar.classList.remove('open');
+                sidebarOverlay?.classList.remove('active');
+            } else {
+                this.elements.sidebar.classList.add('open');
+                sidebarOverlay?.classList.add('active');
+            }
         });
         
         // Close sidebar when clicking/touching overlay
-        sidebarOverlay?.addEventListener('touchend', (e) => {
+        sidebarOverlay?.addEventListener('pointerup', (e) => {
             e.preventDefault();
-            touchHandled = true;
-            this.elements.sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('active');
-            setTimeout(() => { touchHandled = false; }, 100);
-        });
-        
-        sidebarOverlay?.addEventListener('click', () => {
-            if (touchHandled) return;
+            e.stopPropagation();
             this.elements.sidebar.classList.remove('open');
             sidebarOverlay.classList.remove('active');
         });
 
         // Navigation
         this.elements.navItems.forEach(item => {
-            item.addEventListener('touchend', (e) => {
+            item.addEventListener('pointerup', (e) => {
                 e.preventDefault();
-                touchHandled = true;
-                const page = item.dataset.page;
-                this.navigateTo(page);
-                this.elements.sidebar.classList.remove('open');
-                sidebarOverlay?.classList.remove('active');
-                setTimeout(() => { touchHandled = false; }, 100);
-            });
-            
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (touchHandled) return;
+                e.stopPropagation();
                 const page = item.dataset.page;
                 this.navigateTo(page);
                 // Close mobile sidebar after navigation
