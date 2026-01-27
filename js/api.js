@@ -202,9 +202,9 @@ const API = {
                     });
                 }
 
-                // Rate limiting - wait between requests
+                // Rate limiting - shorter delay for faster fetching
                 if (completed < dates.length) {
-                    await this.delay(500);
+                    await this.delay(200);
                 }
 
             } catch (error) {
@@ -241,9 +241,170 @@ const API = {
     },
 
     /**
+     * Fetch data for a specific month
+     */
+    async fetchMonth(year, month, progressCallback = null) {
+        const dates = getDatesInMonth(year, month);
+        return await this.fetchDateRange(dates, progressCallback, { stopOnLimit: true });
+    },
+
+    /**
+     * Fetch multiple dates in parallel (faster!)
+     */
+    async fetchDatesParallel(dates, batchSize = 3, progressCallback = null) {
+        const results = {};
+        const errors = [];
+        let completed = 0;
+        let limitReached = false;
+
+        this.callsThisSession = 0;
+
+        // Process in batches
+        for (let i = 0; i < dates.length; i += batchSize) {
+            if (limitReached) break;
+
+            const batch = dates.slice(i, i + batchSize);
+            
+            // Fetch batch in parallel
+            const promises = batch.map(date => 
+                this.fetchDateData(date)
+                    .then(data => ({ date, data, success: true }))
+                    .catch(error => ({ date, error: error.message, success: false }))
+            );
+
+            const batchResults = await Promise.all(promises);
+
+            for (const result of batchResults) {
+                if (result.success && result.data.hotels?.length > 0) {
+                    results[result.date] = result.data;
+                } else if (result.error === 'API_LIMIT_REACHED') {
+                    limitReached = true;
+                    errors.push({ date: result.date, error: 'API limit reached' });
+                } else if (!result.success) {
+                    errors.push({ date: result.date, error: result.error });
+                }
+                completed++;
+            }
+
+            if (progressCallback) {
+                progressCallback({
+                    completed,
+                    total: dates.length,
+                    percentage: Math.round((completed / dates.length) * 100),
+                    callsUsed: this.callsThisSession,
+                    limitReached
+                });
+            }
+
+            // Small delay between batches (not between each request)
+            if (i + batchSize < dates.length && !limitReached) {
+                await this.delay(200);
+            }
+        }
+
+        return {
+            results,
+            errors,
+            datesCompleted: Object.keys(results).length,
+            datesSkipped: dates.length - completed,
+            callsUsed: this.callsThisSession,
+            limitReached
+        };
+    },
+
+    /**
      * Simple delay helper
      */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    },
+
+    // ============================================
+    // DATABASE SYNC FUNCTIONS
+    // ============================================
+
+    /**
+     * Load all rates from database
+     */
+    async loadFromDatabase() {
+        try {
+            console.log('📥 Loading data from database...');
+            const response = await fetch(CONFIG.api.ratesUrl);
+            const data = await response.json();
+
+            if (data.success && data.dates) {
+                console.log(`✅ Loaded ${data.count} dates from database`);
+                return data.dates;
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ Database load error:', error.message);
+            return null;
+        }
+    },
+
+    /**
+     * Save rates to database
+     */
+    async saveToDatabase(dateData) {
+        try {
+            const response = await fetch(CONFIG.api.ratesUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dateData)
+            });
+            const result = await response.json();
+            if (result.success) {
+                console.log(`💾 Saved ${dateData.date} to database`);
+            }
+            return result.success;
+        } catch (error) {
+            console.error('❌ Database save error:', error.message);
+            return false;
+        }
+    },
+
+    /**
+     * Save multiple dates to database
+     */
+    async saveBulkToDatabase(dates) {
+        try {
+            const response = await fetch(`${CONFIG.api.ratesUrl}/bulk`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dates })
+            });
+            const result = await response.json();
+            if (result.success) {
+                console.log(`💾 Bulk saved ${result.datesUpdated} dates to database`);
+            }
+            return result.success;
+        } catch (error) {
+            console.error('❌ Database bulk save error:', error.message);
+            return false;
+        }
+    },
+
+    /**
+     * Sync local storage with database
+     */
+    async syncWithDatabase() {
+        // Load from database
+        const dbData = await this.loadFromDatabase();
+        
+        if (dbData && Object.keys(dbData).length > 0) {
+            // Merge with local data (database takes priority for same dates)
+            const localData = Storage.loadData() || { dates: {} };
+            const mergedDates = { ...localData.dates, ...dbData };
+            
+            localData.dates = mergedDates;
+            localData.isDemo = false;
+            localData.dataVersion = '2.0';
+            Storage.saveData(localData);
+            
+            console.log(`🔄 Synced: ${Object.keys(mergedDates).length} total dates`);
+            return true;
+        }
+        return false;
     }
 };

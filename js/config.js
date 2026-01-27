@@ -5,7 +5,7 @@
  * SECURITY: API key is handled via Render proxy server
  * Your key never touches the browser or GitHub!
  * 
- * NOW USING: SerpAPI (Google Hotels)
+ * NOW USING: SerpAPI (Google Hotels) + MongoDB
  */
 
 const CONFIG = {
@@ -14,6 +14,9 @@ const CONFIG = {
         // Render Proxy URL (secure - API key stored on server)
         proxyUrl: 'https://hotel-intel-api-awb4.onrender.com/api/hotels',
         accountUrl: 'https://hotel-intel-api-awb4.onrender.com/api/account',
+        
+        // Database endpoints
+        ratesUrl: 'https://hotel-intel-api-awb4.onrender.com/api/rates',
         
         // API provider
         provider: 'serpapi',

@@ -1,33 +1,53 @@
 /**
- * Mackinaw Intel - API Proxy Server
- * Securely proxies requests to SerpAPI (Google Hotels)
- * 
- * Deploy to Render.com:
- * 1. Create a new Web Service
- * 2. Connect your GitHub repo
- * 3. Set environment variable: SERPAPI_KEY = your_api_key
- * 4. Root Directory: server
- * 5. Build command: npm install
- * 6. Start command: node server.js
+ * Mackinaw Intel - API Proxy Server with MongoDB
+ * - Proxies requests to SerpAPI (Google Hotels)
+ * - Stores rate data in MongoDB for cross-device sync
  */
 
 const express = require('express');
 const cors = require('cors');
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Get API key from environment variable
+// Environment variables
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// CORS configuration - allow requests from GitHub Pages
+// MongoDB connection
+let db = null;
+let ratesCollection = null;
+
+async function connectDB() {
+    if (!MONGODB_URI) {
+        console.log('⚠️ No MongoDB URI - running without database');
+        return;
+    }
+    
+    try {
+        const client = new MongoClient(MONGODB_URI);
+        await client.connect();
+        db = client.db('hotelintel');
+        ratesCollection = db.collection('rates');
+        
+        // Create index on date for fast lookups
+        await ratesCollection.createIndex({ date: 1 }, { unique: true });
+        
+        console.log('✅ Connected to MongoDB');
+    } catch (error) {
+        console.error('❌ MongoDB connection error:', error.message);
+    }
+}
+
+// CORS configuration
 app.use(cors({
     origin: [
         'https://rromanox.github.io',
         'http://localhost:3000',
         'http://127.0.0.1:5500'
     ],
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type']
 }));
 
@@ -37,13 +57,18 @@ app.use(express.json());
 app.get('/', (req, res) => {
     res.json({ 
         status: 'ok', 
-        service: 'Mackinaw Intel API Proxy (SerpAPI)',
-        hasApiKey: !!SERPAPI_KEY 
+        service: 'Mackinaw Intel API (SerpAPI + MongoDB)',
+        hasApiKey: !!SERPAPI_KEY,
+        hasDatabase: !!db
     });
 });
 
+// ============================================
+// SERPAPI ENDPOINTS
+// ============================================
+
 /**
- * Proxy endpoint for Google Hotels via SerpAPI
+ * Fetch hotels from SerpAPI
  * GET /api/hotels?checkin=2026-05-10&checkout=2026-05-11
  */
 app.get('/api/hotels', async (req, res) => {
@@ -67,12 +92,12 @@ app.get('/api/hotels', async (req, res) => {
             currency: 'USD',
             gl: 'us',
             hl: 'en',
-            sort_by: '3', // Sort by lowest price to get more variety
+            sort_by: '3',
             api_key: SERPAPI_KEY
         });
 
         const url = `https://serpapi.com/search.json?${params}`;
-        console.log(`Fetching: ${checkin} to ${checkout}`);
+        console.log(`📡 Fetching: ${checkin}`);
 
         const response = await fetch(url);
         const data = await response.json();
@@ -82,7 +107,6 @@ app.get('/api/hotels', async (req, res) => {
             return res.status(400).json({ error: data.error });
         }
 
-        // Return the properties array
         res.json({
             success: true,
             date: checkin,
@@ -97,7 +121,7 @@ app.get('/api/hotels', async (req, res) => {
 });
 
 /**
- * Check API credits/account status
+ * Check SerpAPI account status
  * GET /api/account
  */
 app.get('/api/account', async (req, res) => {
@@ -106,7 +130,6 @@ app.get('/api/account', async (req, res) => {
     }
 
     try {
-        // SerpAPI account info endpoint
         const url = `https://serpapi.com/account.json?api_key=${SERPAPI_KEY}`;
         const response = await fetch(url);
         const data = await response.json();
@@ -132,8 +155,213 @@ app.get('/api/account', async (req, res) => {
     }
 });
 
+// ============================================
+// DATABASE ENDPOINTS
+// ============================================
+
+/**
+ * Save rate data for a date
+ * POST /api/rates
+ * Body: { date: "2026-05-10", hotels: [...], timestamp: "..." }
+ */
+app.post('/api/rates', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    const { date, hotels, timestamp } = req.body;
+
+    if (!date || !hotels) {
+        return res.status(400).json({ error: 'date and hotels required' });
+    }
+
+    try {
+        const result = await ratesCollection.updateOne(
+            { date },
+            { 
+                $set: { 
+                    date,
+                    hotels,
+                    timestamp: timestamp || new Date().toISOString(),
+                    updatedAt: new Date()
+                }
+            },
+            { upsert: true }
+        );
+
+        console.log(`💾 Saved rates for ${date}: ${hotels.length} hotels`);
+        res.json({ success: true, date, hotelsCount: hotels.length });
+
+    } catch (error) {
+        console.error('Save error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Save multiple dates at once
+ * POST /api/rates/bulk
+ * Body: { dates: { "2026-05-10": {...}, "2026-05-11": {...} } }
+ */
+app.post('/api/rates/bulk', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    const { dates } = req.body;
+
+    if (!dates || typeof dates !== 'object') {
+        return res.status(400).json({ error: 'dates object required' });
+    }
+
+    try {
+        const operations = Object.entries(dates).map(([date, data]) => ({
+            updateOne: {
+                filter: { date },
+                update: { 
+                    $set: { 
+                        date,
+                        hotels: data.hotels || [],
+                        timestamp: data.timestamp || new Date().toISOString(),
+                        updatedAt: new Date()
+                    }
+                },
+                upsert: true
+            }
+        }));
+
+        const result = await ratesCollection.bulkWrite(operations);
+        console.log(`💾 Bulk saved ${operations.length} dates`);
+        
+        res.json({ 
+            success: true, 
+            datesUpdated: result.upsertedCount + result.modifiedCount 
+        });
+
+    } catch (error) {
+        console.error('Bulk save error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Get rate data for a specific date
+ * GET /api/rates/:date
+ */
+app.get('/api/rates/:date', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    const { date } = req.params;
+
+    try {
+        const data = await ratesCollection.findOne({ date });
+        
+        if (!data) {
+            return res.status(404).json({ error: 'No data for this date' });
+        }
+
+        res.json({ success: true, data });
+
+    } catch (error) {
+        console.error('Fetch error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Get all rate data
+ * GET /api/rates
+ * Query params: ?from=2026-05-01&to=2026-05-31
+ */
+app.get('/api/rates', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    const { from, to } = req.query;
+
+    try {
+        let query = {};
+        
+        if (from || to) {
+            query.date = {};
+            if (from) query.date.$gte = from;
+            if (to) query.date.$lte = to;
+        }
+
+        const data = await ratesCollection.find(query).sort({ date: 1 }).toArray();
+        
+        // Convert to object format { "2026-05-10": {...}, ... }
+        const dates = {};
+        data.forEach(item => {
+            dates[item.date] = {
+                date: item.date,
+                hotels: item.hotels,
+                timestamp: item.timestamp,
+                isDemo: false
+            };
+        });
+
+        res.json({ 
+            success: true, 
+            count: data.length,
+            dates 
+        });
+
+    } catch (error) {
+        console.error('Fetch all error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Delete rate data for a date
+ * DELETE /api/rates/:date
+ */
+app.delete('/api/rates/:date', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    const { date } = req.params;
+
+    try {
+        const result = await ratesCollection.deleteOne({ date });
+        res.json({ success: true, deleted: result.deletedCount > 0 });
+
+    } catch (error) {
+        console.error('Delete error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Clear all rate data
+ * DELETE /api/rates
+ */
+app.delete('/api/rates', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    try {
+        const result = await ratesCollection.deleteMany({});
+        console.log(`🗑️ Cleared all rates: ${result.deletedCount} documents`);
+        res.json({ success: true, deleted: result.deletedCount });
+
+    } catch (error) {
+        console.error('Clear error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Start server
-app.listen(PORT, () => {
-    console.log(`🏨 Mackinaw Intel Proxy (SerpAPI) running on port ${PORT}`);
-    console.log(`API Key configured: ${SERPAPI_KEY ? 'Yes ✓' : 'No ✗'}`);
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log(`🏨 Mackinaw Intel Server running on port ${PORT}`);
+        console.log(`   SerpAPI: ${SERPAPI_KEY ? '✅' : '❌'}`);
+        console.log(`   MongoDB: ${db ? '✅' : '❌'}`);
+    });
 });

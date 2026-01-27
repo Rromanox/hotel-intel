@@ -29,6 +29,16 @@ const App = {
                 Storage.clearAll();
             }
 
+            // Try to sync with database first
+            console.log('🔄 Syncing with database...');
+            const synced = await API.syncWithDatabase();
+            
+            if (synced) {
+                console.log('✅ Database sync complete');
+            } else {
+                console.log('📋 No database data, using local only');
+            }
+
             // Load whatever data we have (could be empty)
             this.loadExistingData();
 
@@ -158,9 +168,8 @@ const App = {
             console.error('Update failed:', error);
             UI.hideUpdateModal();
             
-            // Fall back to demo data
-            UI.showToast('API unavailable. Loading demo data instead.', 'info');
-            await this.loadDemoData();
+            // Show error - no demo data anymore
+            UI.showToast('Failed to fetch data. Please try again.', 'error');
         }
     },
 
@@ -355,6 +364,5 @@ window.MackinawIntel = {
     API,
     Storage,
     Charts,
-    UI,
-    DemoData
+    UI
 };

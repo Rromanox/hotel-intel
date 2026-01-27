@@ -1546,11 +1546,14 @@ const UI = {
             
             // Only save dates that actually have hotels
             let savedCount = 0;
+            const datesToSaveToDb = {};
+            
             Object.keys(result.results).forEach(date => {
                 const dateData = result.results[date];
                 if (dateData.hotels && dateData.hotels.length > 0) {
                     dateData.isDemo = false;
                     existingData.dates[date] = dateData;
+                    datesToSaveToDb[date] = dateData;
                     savedCount++;
                     console.log(`✅ Saved ${date}: ${dateData.hotels.length} hotels`);
                 } else {
@@ -1565,6 +1568,9 @@ const UI = {
                 existingData.dataVersion = '2.0';
                 Storage.saveData(existingData);
                 Storage.setLastUpdate();
+                
+                // Also save to database for cross-device sync
+                API.saveBulkToDatabase(datesToSaveToDb);
             }
         }
 
@@ -1624,11 +1630,14 @@ const UI = {
             
             // Only save dates that actually have hotels
             let savedCount = 0;
+            const datesToSaveToDb = {};
+            
             Object.keys(result.results).forEach(date => {
                 const dateData = result.results[date];
                 if (dateData.hotels && dateData.hotels.length > 0) {
                     dateData.isDemo = false;
                     existingData.dates[date] = dateData;
+                    datesToSaveToDb[date] = dateData;
                     savedCount++;
                     console.log(`✅ Saved ${date}: ${dateData.hotels.length} hotels`);
                 } else {
@@ -1643,6 +1652,9 @@ const UI = {
                 existingData.dataVersion = '2.0';
                 Storage.saveData(existingData);
                 Storage.setLastUpdate();
+                
+                // Also save to database for cross-device sync
+                API.saveBulkToDatabase(datesToSaveToDb);
             }
         }
 
