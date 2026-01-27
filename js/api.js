@@ -1,21 +1,34 @@
 /**
  * Mackinaw Intel - API Module
- * Handles MakCorp API integration for hotel data collection
+ * Handles MakCorp API integration with secure proxy support
  * 
- * API Docs: https://docs.makcorps.com
- * Endpoint: https://api.makcorps.com/city
+ * Supports two modes:
+ * - 'proxy': Calls your Render server (API key safe on server)
+ * - 'direct': Calls MakCorps directly (API key in localStorage)
  */
 
 const API = {
+    // Track API calls in this session
+    callsThisSession: 0,
+    lastKnownLimit: null,
+    lastKnownRemaining: null,
+
     /**
-     * Build the API URL for a specific check-in date
+     * Get the API key (from settings/localStorage)
+     */
+    getApiKey() {
+        const settings = Storage.loadSettings();
+        return settings.apiKey || CONFIG.api.apiKey || '';
+    },
+
+    /**
+     * Build the API URL based on mode (proxy or direct)
      */
     buildUrl(checkinDate, checkoutDate, pagination = 0) {
-        const settings = Storage.loadSettings();
-        const apiKey = settings.apiKey || CONFIG.api.apiKey;
+        const mode = CONFIG.api.mode;
+        const baseUrl = mode === 'proxy' ? CONFIG.api.proxyUrl : CONFIG.api.directUrl;
         
         const params = new URLSearchParams({
-            api_key: apiKey,
             cityid: CONFIG.api.cityId,
             pagination: String(pagination),
             cur: CONFIG.api.params.cur,
@@ -25,7 +38,16 @@ const API = {
             checkout: checkoutDate
         });
 
-        return `${CONFIG.api.baseUrl}?${params.toString()}`;
+        // Only add API key for direct mode
+        if (mode === 'direct') {
+            const apiKey = this.getApiKey();
+            if (!apiKey) {
+                throw new Error('API key not set. Go to Settings to enter your MakCorps API key.');
+            }
+            params.append('api_key', apiKey);
+        }
+
+        return `${baseUrl}?${params.toString()}`;
     },
 
     /**
@@ -44,7 +66,6 @@ const API = {
         if (!priceStr) return null;
         if (typeof priceStr === 'number') return priceStr;
         
-        // Remove $ and commas, then parse
         const cleaned = String(priceStr).replace(/[$,]/g, '').trim();
         const parsed = parseFloat(cleaned);
         return isNaN(parsed) ? null : parsed;
@@ -52,7 +73,6 @@ const API = {
 
     /**
      * Extract hotel data from API response item
-     * Maps MakCorps response format to our internal format
      */
     extractHotelData(item) {
         if (!item || !item.name) return null;
@@ -74,7 +94,6 @@ const API = {
             }
         }
 
-        // Skip hotels without prices
         if (!lowestPrice) return null;
 
         return {
@@ -83,35 +102,85 @@ const API = {
             price: lowestPrice,
             vendor: lowestVendor,
             rating: item.reviews?.rating || null,
-            reviewCount: item.reviews?.count || null,
-            // We're not storing these to save space, but they're available:
-            // telephone: item.telephone || null,
-            // coordinates: item.geocode ? [item.geocode.latitude, item.geocode.longitude] : null
+            reviewCount: item.reviews?.count || null
         };
     },
 
     /**
-     * Fetch hotel data for a specific date (all pages)
+     * Check API account status and remaining credits
      */
-    async fetchDateData(checkinDate, progressCallback = null) {
+    async checkAccount() {
+        try {
+            let url;
+            if (CONFIG.api.mode === 'proxy') {
+                url = CONFIG.api.proxyUrl.replace('/city', '/account');
+            } else {
+                const apiKey = this.getApiKey();
+                if (!apiKey) {
+                    return { success: false, error: 'API key not set' };
+                }
+                url = `https://api.makcorps.com/account?api_key=${apiKey}`;
+            }
+
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                this.lastKnownLimit = data.requestLimit;
+                this.lastKnownRemaining = data.remainingLimit;
+                return {
+                    success: true,
+                    requestLimit: data.requestLimit,
+                    requestUsed: data.requestUsed,
+                    remainingLimit: data.remainingLimit
+                };
+            }
+            return { success: false, error: 'Request failed' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    },
+
+    /**
+     * Estimate API calls needed
+     */
+    estimateCalls(numDates, fullFetch = false) {
+        const callsPerDate = fullFetch ? 3 : 1;
+        return numDates * callsPerDate;
+    },
+
+    /**
+     * Fetch hotel data for a specific date
+     * @param {string} checkinDate - Date in YYYY-MM-DD format
+     * @param {boolean} fullFetch - If true, fetch all pages (~3 calls). If false, page 0 only (1 call)
+     */
+    async fetchDateData(checkinDate, fullFetch = false) {
         const checkoutDate = this.getCheckoutDate(checkinDate);
         const allHotels = [];
         let currentPage = 0;
         let hasMorePages = true;
+        const maxPages = fullFetch ? 5 : 1;
 
-        while (hasMorePages && currentPage < 5) { // Max 5 pages (150 hotels) safety limit
+        while (hasMorePages && currentPage < maxPages) {
             const url = this.buildUrl(checkinDate, checkoutDate, currentPage);
 
             try {
                 const response = await fetch(url);
+                this.callsThisSession++;
+                
+                if (response.status === 403) {
+                    throw new Error('API_LIMIT_REACHED');
+                }
+                
+                if (response.status === 404) {
+                    throw new Error('API_KEY_INVALID');
+                }
                 
                 if (!response.ok) {
-                    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                    throw new Error(`API Error: ${response.status}`);
                 }
 
                 const data = await response.json();
                 
-                // API returns an array, last item contains pagination info
                 if (!Array.isArray(data) || data.length === 0) {
                     hasMorePages = false;
                     break;
@@ -125,13 +194,11 @@ const API = {
                     paginationInfo = lastItem[0];
                 }
 
-                // Process hotel data (exclude pagination info)
+                // Process hotel data
                 const hotelsData = paginationInfo ? data.slice(0, -1) : data;
                 
                 for (const item of hotelsData) {
-                    // Skip if it's the pagination array
                     if (Array.isArray(item)) continue;
-                    
                     const hotel = this.extractHotelData(item);
                     if (hotel) {
                         allHotels.push(hotel);
@@ -139,12 +206,11 @@ const API = {
                 }
 
                 // Check if there are more pages
-                if (paginationInfo) {
+                if (fullFetch && paginationInfo) {
                     const totalPages = paginationInfo.totalpageCount || 1;
                     currentPage++;
                     hasMorePages = currentPage < totalPages;
                 } else {
-                    // No pagination info, assume single page
                     hasMorePages = false;
                 }
 
@@ -154,6 +220,9 @@ const API = {
                 }
 
             } catch (error) {
+                if (error.message === 'API_LIMIT_REACHED' || error.message === 'API_KEY_INVALID') {
+                    throw error;
+                }
                 console.error(`Error fetching page ${currentPage} for ${checkinDate}:`, error);
                 throw error;
             }
@@ -165,22 +234,41 @@ const API = {
         return {
             timestamp: new Date().toISOString(),
             date: checkinDate,
-            hotels: allHotels
+            hotels: allHotels,
+            isPartial: !fullFetch
         };
     },
 
     /**
      * Fetch data for a date range with progress tracking
      */
-    async fetchDateRange(dates, progressCallback = null) {
+    async fetchDateRange(dates, progressCallback = null, options = {}) {
+        const { fullFetch = false, stopOnLimit = true } = options;
         const results = {};
         const total = dates.length;
         let completed = 0;
         let errors = [];
+        let limitReached = false;
+
+        // Check account status first
+        const accountStatus = await this.checkAccount();
+        if (accountStatus.success) {
+            console.log(`API Credits: ${accountStatus.remainingLimit} remaining of ${accountStatus.requestLimit}`);
+            
+            const estimatedCalls = this.estimateCalls(dates.length, fullFetch);
+            if (estimatedCalls > accountStatus.remainingLimit) {
+                console.warn(`Warning: Need ~${estimatedCalls} calls, have ${accountStatus.remainingLimit}`);
+            }
+        }
 
         for (const date of dates) {
+            if (limitReached && stopOnLimit) {
+                errors.push({ date, error: 'Skipped - API limit reached' });
+                continue;
+            }
+
             try {
-                const data = await this.fetchDateData(date);
+                const data = await this.fetchDateData(date, fullFetch);
                 results[date] = data;
                 completed++;
 
@@ -190,50 +278,140 @@ const API = {
                         total,
                         currentDate: date,
                         percentage: Math.round((completed / total) * 100),
-                        hotelsFound: data.hotels.length
+                        hotelsFound: data.hotels.length,
+                        callsUsed: this.callsThisSession,
+                        limitReached: false
                     });
                 }
 
-                // Rate limiting - wait between dates
+                // Rate limiting between dates
                 if (completed < total) {
-                    await this.delay(500);
+                    await this.delay(400);
                 }
 
             } catch (error) {
-                errors.push({ date, error: error.message });
-                completed++;
-                
-                if (progressCallback) {
-                    progressCallback({
-                        completed,
-                        total,
-                        currentDate: date,
-                        percentage: Math.round((completed / total) * 100),
-                        error: error.message
-                    });
+                if (error.message === 'API_LIMIT_REACHED') {
+                    limitReached = true;
+                    errors.push({ date, error: 'API limit reached' });
+                    
+                    if (progressCallback) {
+                        progressCallback({
+                            completed,
+                            total,
+                            currentDate: date,
+                            percentage: Math.round((completed / total) * 100),
+                            error: 'API LIMIT REACHED',
+                            limitReached: true
+                        });
+                    }
+                    
+                    if (stopOnLimit) break;
+                } else if (error.message === 'API_KEY_INVALID') {
+                    errors.push({ date, error: 'Invalid API key' });
+                    if (progressCallback) {
+                        progressCallback({
+                            completed, total, currentDate: date,
+                            error: 'Invalid API key - check Settings'
+                        });
+                    }
+                    break;
+                } else {
+                    errors.push({ date, error: error.message });
+                    if (progressCallback) {
+                        progressCallback({
+                            completed, total, currentDate: date,
+                            percentage: Math.round((completed / total) * 100),
+                            error: error.message
+                        });
+                    }
                 }
             }
         }
 
-        return { results, errors };
+        return { 
+            results, 
+            errors, 
+            limitReached,
+            callsUsed: this.callsThisSession,
+            datesCompleted: Object.keys(results).length,
+            datesSkipped: dates.length - Object.keys(results).length
+        };
     },
 
     /**
-     * Fetch data for an entire month
+     * Smart update - fetches data efficiently within API limits
      */
-    async fetchMonthData(year, month, progressCallback = null) {
-        const dates = getDatesInMonth(year, month);
-        return this.fetchDateRange(dates, progressCallback);
+    async smartUpdate(progressCallback = null, options = {}) {
+        const {
+            fullFetch = false,
+            maxCalls = 25,
+            startDate = null,
+            numDays = null
+        } = options;
+
+        this.callsThisSession = 0;
+
+        // Check account first
+        const account = await this.checkAccount();
+        let availableCalls = maxCalls;
+        
+        if (account.success) {
+            availableCalls = Math.min(maxCalls, account.remainingLimit);
+            console.log(`Smart Update: ${availableCalls} calls available`);
+        }
+
+        // Calculate how many dates we can fetch
+        const callsPerDate = fullFetch ? 3 : 1;
+        const maxDates = Math.floor(availableCalls / callsPerDate);
+        const datesToFetch = numDays ? Math.min(numDays, maxDates) : maxDates;
+
+        // Generate date list starting from May 1, 2026
+        const dates = [];
+        const start = startDate ? new Date(startDate + 'T00:00:00') : new Date(2026, 4, 1);
+
+        for (let i = 0; i < datesToFetch; i++) {
+            const date = new Date(start);
+            date.setDate(start.getDate() + i);
+            dates.push(formatDateForAPI(date));
+        }
+
+        console.log(`Fetching ${dates.length} dates (est. ${dates.length * callsPerDate} calls)`);
+
+        const result = await this.fetchDateRange(dates, progressCallback, { 
+            fullFetch, 
+            stopOnLimit: true 
+        });
+
+        // Save whatever we got
+        if (Object.keys(result.results).length > 0) {
+            const existingData = Storage.loadData() || { dates: {} };
+            Object.assign(existingData.dates, result.results);
+            existingData.lastFullUpdate = new Date().toISOString();
+            existingData.totalHotels = this.countUniqueHotels(existingData.dates);
+            existingData.isDemo = false;
+            existingData.isPartial = result.limitReached || result.datesSkipped > 0;
+            Storage.saveData(existingData);
+            Storage.setLastUpdate();
+        }
+
+        return {
+            success: !result.limitReached && result.errors.length === 0,
+            datesUpdated: result.datesCompleted,
+            datesSkipped: result.datesSkipped,
+            callsUsed: result.callsUsed,
+            limitReached: result.limitReached,
+            errors: result.errors
+        };
     },
 
     /**
-     * Perform a full update for all configured months
+     * Full update for all configured months
      */
-    async fullUpdate(progressCallback = null) {
+    async fullUpdate(progressCallback = null, options = {}) {
+        const { fullFetch = false } = options;
         const { startMonth, startYear, monthsToCollect } = CONFIG.dateRange;
         const allDates = [];
 
-        // Collect all dates for all months
         for (let i = 0; i < monthsToCollect; i++) {
             let month = startMonth + i;
             let year = startYear;
@@ -246,40 +424,59 @@ const API = {
             allDates.push(...getDatesInMonth(year, month));
         }
 
-        const { results, errors } = await this.fetchDateRange(allDates, progressCallback);
+        this.callsThisSession = 0;
 
-        // Save to storage
-        const existingData = Storage.loadData() || { dates: {} };
-        
-        // Merge new results with existing data
-        Object.assign(existingData.dates, results);
-        existingData.lastFullUpdate = new Date().toISOString();
-        existingData.totalHotels = this.countUniqueHotels(existingData.dates);
-        existingData.isDemo = false; // Mark as real data
+        const result = await this.fetchDateRange(allDates, progressCallback, { 
+            fullFetch,
+            stopOnLimit: true 
+        });
 
-        Storage.saveData(existingData);
-        Storage.setLastUpdate();
+        // Save collected data
+        if (Object.keys(result.results).length > 0) {
+            const existingData = Storage.loadData() || { dates: {} };
+            Object.assign(existingData.dates, result.results);
+            existingData.lastFullUpdate = new Date().toISOString();
+            existingData.totalHotels = this.countUniqueHotels(existingData.dates);
+            existingData.isDemo = false;
+            existingData.isPartial = result.limitReached;
+            Storage.saveData(existingData);
+            Storage.setLastUpdate();
+        }
 
         return {
-            success: errors.length === 0,
-            datesUpdated: Object.keys(results).length,
-            errors
+            success: !result.limitReached && result.errors.length === 0,
+            datesUpdated: result.datesCompleted,
+            datesSkipped: result.datesSkipped,
+            callsUsed: result.callsUsed,
+            limitReached: result.limitReached,
+            errors: result.errors,
+            message: result.limitReached 
+                ? `API limit reached after ${result.datesCompleted} dates. Data saved.`
+                : `Successfully updated ${result.datesCompleted} dates.`
         };
     },
 
     /**
-     * Fetch data for a single date (for testing)
+     * Test fetch for a single date
      */
-    async testFetch(checkinDate) {
+    async testFetch(checkinDate, fullFetch = false) {
         console.log(`Testing API fetch for ${checkinDate}...`);
+        this.callsThisSession = 0;
         
         try {
-            const data = await this.fetchDateData(checkinDate);
-            console.log(`Success! Found ${data.hotels.length} hotels`);
-            console.log('Sample hotels:', data.hotels.slice(0, 3));
+            const data = await this.fetchDateData(checkinDate, fullFetch);
+            console.log(`✓ Found ${data.hotels.length} hotels (${this.callsThisSession} API calls)`);
+            
+            // Check for your hotels and competitors
+            const yourHotels = data.hotels.filter(h => isYourHotel(h.name));
+            const competitors = data.hotels.filter(h => isTrackedCompetitor(h.name));
+            
+            console.log('Your hotels:', yourHotels);
+            console.log('Tracked competitors:', competitors);
+            
             return data;
         } catch (error) {
-            console.error('Test fetch failed:', error);
+            console.error('Test failed:', error.message);
             throw error;
         }
     },
@@ -303,45 +500,31 @@ const API = {
         return hotelIds.size;
     },
 
-    /**
-     * Delay helper for rate limiting
-     */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     },
 
-    /**
-     * Check API connectivity and credits
-     */
-    async checkAccount() {
-        const settings = Storage.loadSettings();
-        const apiKey = settings.apiKey || CONFIG.api.apiKey;
-        
-        try {
-            const response = await fetch(`https://api.makcorps.com/account?api_key=${apiKey}`);
-            if (response.ok) {
-                const data = await response.json();
-                return {
-                    success: true,
-                    requestLimit: data.requestLimit,
-                    requestUsed: data.requestUsed,
-                    remainingLimit: data.remainingLimit
-                };
-            }
-            return { success: false, error: 'Invalid API key' };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
+    getSessionStats() {
+        return {
+            callsThisSession: this.callsThisSession,
+            lastKnownLimit: this.lastKnownLimit,
+            lastKnownRemaining: this.lastKnownRemaining
+        };
     }
 };
 
 /**
- * Demo data generator for testing when API is unavailable
+ * Demo Data Generator - For testing without API calls
  */
 const DemoData = {
     hotelNames: [
         'Riviera Motel',
         'American Boutique Inn',
+        'Super 8 by Wyndham Mackinaw City Bridgeview',
+        'Vindel Motel',
+        'Lighthouse View Motel',
+        'Parkside Inn Bridgeview',
+        'Rainbow Motel',
         'Mackinaw Beach Hotel',
         'Bridge View Lodge',
         'Northern Lights Inn',
@@ -353,12 +536,10 @@ const DemoData = {
         'Sunset Bay Resort',
         'Colonial House Inn',
         'Mackinaw Motor Lodge',
-        'Parkview Inn',
         'Harbor Springs Hotel',
         'Straits Area Resort',
         'Wilderness Lodge',
         'Birchwood Inn',
-        'Lighthouse Point Hotel',
         'Fort Mackinaw Inn',
         'Victorian Inn',
         'Comfort Stay Motel',
@@ -368,73 +549,69 @@ const DemoData = {
         'Budget Inn Express',
         'Quality Inn Lakeside',
         'Days Inn Mackinaw',
-        'Super 8 Bridge View',
         'Holiday Inn Express',
         'Hampton Inn Mackinaw',
         'Best Western Lakefront',
         'Ramada by Wyndham',
         'Fairfield Inn Mackinaw',
         'Courtyard by Marriott',
-        'SpringHill Suites',
         'Baymont Inn',
         'La Quinta Inn',
-        'Sleep Inn & Suites',
-        'Country Inn & Suites',
-        'Econo Lodge Straits',
-        'Motel 6 Mackinaw',
-        'Travelodge by Wyndham',
-        'Americas Best Value Inn',
-        'Knights Inn Mackinaw',
-        'Rodeway Inn Bridge',
-        'Clarion Hotel Beachfront',
-        'Comfort Suites Lakeside',
-        'Crown Choice Inn',
-        'Bell\'s Melody Motel',
-        'Thunderbird Inn',
-        'Nicolet Inn',
-        'Starlight Budget Inn',
-        'Chief Motel',
-        'Parkside Inn',
-        'Great Lakes Inn',
-        'Nor\' Gate Motel',
-        'Rainbow Motel',
-        'Chippewa Motor Lodge',
-        'Hamilton Inn',
-        'Cabins of Mackinaw',
-        'Clearwater Lakeshore',
-        'Beach House Cottages',
-        'Brigadoon B&B'
+        'Sleep Inn & Suites'
     ],
 
-    vendors: ['Booking.com', 'Expedia.com', 'Hotels.com', 'Priceline', 'Agoda.com', 'Trip.com'],
+    vendors: ['Booking.com', 'Expedia.com', 'Hotels.com', 'Priceline', 'Agoda.com'],
 
     generateHotelData(date, basePrice = 85) {
         const hotels = [];
         const usedNames = new Set();
-        const numHotels = 55 + Math.floor(Math.random() * 10); // 55-64 hotels
+        const numHotels = 30 + Math.floor(Math.random() * 10);
+        const isWeekend = [0, 5, 6].includes(new Date(date).getDay());
+        const weekendBoost = isWeekend ? 20 : 0;
 
-        // Always include your hotels first with specific IDs
+        // Your hotels first
         hotels.push({
             name: 'Riviera Motel',
             hotelId: 1162889,
-            price: Math.round(basePrice + (Math.random() * 20) - 10 + (new Date(date).getDay() >= 5 ? 15 : 0)),
+            price: Math.round(basePrice + (Math.random() * 15) - 5 + weekendBoost),
             vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-            rating: 3.5 + Math.random() * 0.5,
-            reviewCount: 180 + Math.floor(Math.random() * 100)
+            rating: 3.5,
+            reviewCount: 185
         });
         usedNames.add('Riviera Motel');
 
         hotels.push({
             name: 'American Boutique Inn',
             hotelId: 564648,
-            price: Math.round(basePrice + 5 + (Math.random() * 20) - 10 + (new Date(date).getDay() >= 5 ? 15 : 0)),
+            price: Math.round(basePrice + 8 + (Math.random() * 15) - 5 + weekendBoost),
             vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
-            rating: 4.0 + Math.random() * 0.5,
-            reviewCount: 280 + Math.floor(Math.random() * 150)
+            rating: 4.0,
+            reviewCount: 312
         });
         usedNames.add('American Boutique Inn');
 
-        // Generate remaining hotels
+        // Competitors with realistic names
+        const competitorPrices = {
+            'Super 8 by Wyndham Mackinaw City Bridgeview': basePrice - 10,
+            'Vindel Motel': basePrice - 5,
+            'Lighthouse View Motel': basePrice + 5,
+            'Parkside Inn Bridgeview': basePrice,
+            'Rainbow Motel': basePrice - 8
+        };
+
+        Object.entries(competitorPrices).forEach(([name, price]) => {
+            hotels.push({
+                name: name,
+                hotelId: 100000 + Math.floor(Math.random() * 900000),
+                price: Math.round(price + (Math.random() * 20) - 10 + weekendBoost),
+                vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
+                rating: 3 + Math.random() * 1.5,
+                reviewCount: 50 + Math.floor(Math.random() * 300)
+            });
+            usedNames.add(name);
+        });
+
+        // Fill rest with random hotels
         for (let i = hotels.length; i < numHotels; i++) {
             let name;
             do {
@@ -443,21 +620,16 @@ const DemoData = {
             
             usedNames.add(name);
 
-            const variance = (Math.random() - 0.5) * 80;
-            const dayVariance = (new Date(date).getDay() >= 5 ? 20 : 0);
-            const price = Math.round(basePrice + variance + dayVariance);
-
             hotels.push({
                 name: name,
-                hotelId: 100000 + i + Math.floor(Math.random() * 10000),
-                price: Math.max(49, price),
+                hotelId: 100000 + Math.floor(Math.random() * 900000),
+                price: Math.max(49, Math.round(basePrice + (Math.random() - 0.5) * 60 + weekendBoost)),
                 vendor: this.vendors[Math.floor(Math.random() * this.vendors.length)],
                 rating: 2.5 + Math.random() * 2.5,
-                reviewCount: 10 + Math.floor(Math.random() * 500)
+                reviewCount: 10 + Math.floor(Math.random() * 400)
             });
         }
 
-        // Sort by price
         hotels.sort((a, b) => a.price - b.price);
 
         return {
@@ -471,15 +643,8 @@ const DemoData = {
         const dates = getDatesInMonth(year, month);
         const results = {};
 
-        // Base price varies by month (peak season = higher)
-        const monthPrices = {
-            5: 89,   // May
-            6: 115,  // June
-            7: 139,  // July (peak)
-            8: 135,  // August
-            9: 99    // September
-        };
-
+        // Seasonal base prices
+        const monthPrices = { 5: 89, 6: 115, 7: 139, 8: 135, 9: 99 };
         const basePrice = monthPrices[month] || 100;
 
         dates.forEach(date => {
@@ -498,16 +663,15 @@ const DemoData = {
             let year = startYear;
             
             if (month > 12) {
-                month = month - 12;
-                year = year + 1;
+                month -= 12;
+                year += 1;
             }
 
-            const monthData = this.generateMonthData(year, month);
-            Object.assign(allData.dates, monthData);
+            Object.assign(allData.dates, this.generateMonthData(year, month));
         }
 
         allData.lastFullUpdate = new Date().toISOString();
-        allData.totalHotels = 64;
+        allData.totalHotels = 40;
         allData.isDemo = true;
 
         return allData;

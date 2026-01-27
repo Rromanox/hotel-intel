@@ -1,14 +1,28 @@
 /**
  * Mackinaw Intel - Configuration
  * Hotel Rate Intelligence Platform
+ * 
+ * SECURITY: API key is handled via Render proxy server
+ * Your key never touches the browser or GitHub!
  */
 
 const CONFIG = {
-    // MakCorp API Settings
+    // API Settings
     api: {
-        baseUrl: 'https://api.makcorps.com/city',
-        apiKey: '6978c0209add31b74d40b7c1',
-        cityId: '42424',
+        // Direct MakCorps API (requires key in localStorage - less secure)
+        directUrl: 'https://api.makcorps.com/city',
+        
+        // Render Proxy URL (secure - API key stored on server)
+        // UPDATE THIS after deploying to Render!
+        proxyUrl: '', // e.g., 'https://your-app-name.onrender.com/api/city'
+        
+        // Set to 'proxy' for secure multi-device, or 'direct' for localStorage key
+        mode: 'direct', // Change to 'proxy' after setting up Render
+        
+        // Only used in 'direct' mode - leave empty, enter in Settings page
+        apiKey: '',
+        
+        cityId: '42424', // Mackinaw City
         params: {
             pagination: '0',
             cur: 'USD',
@@ -17,7 +31,9 @@ const CONFIG = {
         }
     },
 
-    // Your Hotels to Highlight
+    // ===========================================
+    // YOUR HOTELS (2)
+    // ===========================================
     yourHotels: {
         'Riviera Motel': {
             id: 1162889,
@@ -29,6 +45,27 @@ const CONFIG = {
         }
     },
 
+    // ===========================================
+    // YOUR DIRECT COMPETITORS (13)
+    // ===========================================
+    trackedCompetitors: [
+        // Original 5
+        'Super 8',           // Super 8 Bridgeview
+        'Vindel',            // The Vindel Motel
+        'Lighthouse View',   // Lighthouse View Motel  
+        'Parkside Inn',      // The Parkside Inn
+        'Rainbow',           // The Rainbow Motel
+        // Added 8 more
+        'Days Inn',          // Days Inn
+        'Comfort Inn',       // Comfort Inn
+        'Quality Inn',       // Quality Inn
+        'Baymont',           // Baymont Inn
+        'Holiday Inn',       // Holiday Inn Express
+        'Hampton Inn',       // Hampton Inn
+        'Econo Lodge',       // Econo Lodge
+        'America\'s Best'    // America's Best Value Inn
+    ],
+
     // Update Settings
     updates: {
         intervalDays: 15,
@@ -37,32 +74,46 @@ const CONFIG = {
         settingsKey: 'mackinawIntelSettings'
     },
 
-    // Date Range for Initial Collection
+    // Date Range for Data Collection (May - September 2026)
     dateRange: {
-        startMonth: 5, // May
+        startMonth: 5,
         startYear: 2026,
-        monthsToCollect: 5 // May through September
+        monthsToCollect: 5
     },
 
     // UI Settings
     ui: {
-        defaultTheme: 'light',
+        defaultTheme: 'dark',
         animationsEnabled: true,
         toastDuration: 4000
     },
 
     // Chart Colors
     chartColors: {
-        primary: '#fbbf24',
-        secondary: '#3d5a80',
-        tertiary: '#8aa4c1',
-        success: '#10b981',
-        danger: '#ef4444',
+        primary: '#fbbf24',      // Gold - Your hotels
+        secondary: '#3d5a80',    // Navy - Market average
+        tertiary: '#8aa4c1',     // Light blue - Other hotels
+        success: '#10b981',      // Green - Positive changes
+        danger: '#ef4444',       // Red - Negative changes
+        competitor: '#8b5cf6',   // Purple - Tracked competitors
         grid: 'rgba(148, 163, 184, 0.2)'
+    },
+
+    // API Plans Reference
+    apiPlans: {
+        free: { calls: 30, name: 'Free Trial' },
+        basic: { calls: 10000, name: 'Basic ($350/mo)' },
+        advance: { calls: 50000, name: 'Advance ($500/mo)' }
     }
 };
 
-// Helper to check if a hotel is one of "your" properties
+// ===========================================
+// HELPER FUNCTIONS
+// ===========================================
+
+/**
+ * Check if a hotel is one of YOUR properties
+ */
 function isYourHotel(hotelName) {
     if (!hotelName) return false;
     const normalized = hotelName.toLowerCase().trim();
@@ -74,7 +125,38 @@ function isYourHotel(hotelName) {
     return false;
 }
 
-// Helper to get hotel ID by name
+/**
+ * Check if a hotel is a tracked competitor
+ */
+function isTrackedCompetitor(hotelName) {
+    if (!hotelName) return false;
+    const normalized = hotelName.toLowerCase().trim();
+    
+    return CONFIG.trackedCompetitors.some(comp => 
+        normalized.includes(comp.toLowerCase())
+    );
+}
+
+/**
+ * Check if hotel should be highlighted (your hotel OR tracked competitor)
+ */
+function isTrackedHotel(hotelName) {
+    return isYourHotel(hotelName) || isTrackedCompetitor(hotelName);
+}
+
+/**
+ * Get hotel category for styling
+ * Returns: 'yours', 'competitor', or 'market'
+ */
+function getHotelCategory(hotelName) {
+    if (isYourHotel(hotelName)) return 'yours';
+    if (isTrackedCompetitor(hotelName)) return 'competitor';
+    return 'market';
+}
+
+/**
+ * Get hotel ID by name
+ */
 function getHotelId(hotelName) {
     if (!hotelName) return null;
     const normalized = hotelName.toLowerCase().trim();
@@ -86,7 +168,9 @@ function getHotelId(hotelName) {
     return null;
 }
 
-// Format currency
+/**
+ * Format currency
+ */
 function formatCurrency(amount) {
     if (amount === null || amount === undefined || isNaN(amount)) return '--';
     return new Intl.NumberFormat('en-US', {
@@ -95,7 +179,9 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-// Format date for display
+/**
+ * Format date for display
+ */
 function formatDate(dateStr) {
     const date = new Date(dateStr + 'T00:00:00');
     return date.toLocaleDateString('en-US', {
@@ -106,7 +192,9 @@ function formatDate(dateStr) {
     });
 }
 
-// Format date for API calls (YYYY-MM-DD)
+/**
+ * Format date for API calls (YYYY-MM-DD)
+ */
 function formatDateForAPI(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -114,7 +202,9 @@ function formatDateForAPI(date) {
     return `${year}-${month}-${day}`;
 }
 
-// Get dates for a month
+/**
+ * Get dates for a month
+ */
 function getDatesInMonth(year, month) {
     const dates = [];
     const lastDay = new Date(year, month, 0).getDate();
@@ -127,21 +217,15 @@ function getDatesInMonth(year, month) {
     return dates;
 }
 
-// Calculate percentage change
+/**
+ * Calculate percentage change
+ */
 function calculatePercentChange(oldVal, newVal) {
     if (!oldVal || !newVal || oldVal === 0) return null;
     return ((newVal - oldVal) / oldVal * 100).toFixed(1);
 }
 
-// Month names
-const MONTH_NAMES = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-];
-
-const MONTH_NAMES_SHORT = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-];
-
+// Month/Day names
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

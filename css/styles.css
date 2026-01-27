@@ -1915,3 +1915,323 @@ body {
         padding: 0;
     }
 }
+/* ============================================
+   ADDITIONAL STYLES FOR API STATUS & SETTINGS
+   Add these to the end of your styles.css file
+   ============================================ */
+
+/* API Status Card */
+.api-status-card {
+    background: linear-gradient(135deg, var(--navy-800), var(--navy-900)) !important;
+    border-color: var(--gold-400) !important;
+}
+
+.api-status-card .settings-title {
+    color: #fff;
+    border-bottom-color: rgba(255,255,255,0.1);
+}
+
+.api-credits-display {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 0;
+}
+
+.credits-visual {
+    flex: 1;
+}
+
+.credits-bar {
+    height: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.credits-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-400), var(--gold-500));
+    border-radius: 6px;
+    transition: width 0.5s ease;
+}
+
+.credits-fill.warning {
+    background: linear-gradient(90deg, var(--gold-500), #f97316);
+}
+
+.credits-fill.danger {
+    background: linear-gradient(90deg, #f97316, var(--danger));
+}
+
+.credits-numbers {
+    font-size: 0.8rem;
+    color: var(--navy-300);
+}
+
+.credits-remaining {
+    text-align: center;
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.05);
+    border-radius: var(--radius-md);
+}
+
+.credits-remaining .big-number {
+    display: block;
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gold-400);
+    line-height: 1;
+}
+
+.credits-remaining .credits-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--navy-300);
+}
+
+/* Fetch Estimate */
+.fetch-estimate {
+    display: flex;
+    gap: 20px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.estimate-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.estimate-label {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.estimate-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+}
+
+/* Property Tags - Updated */
+.property-tags {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.property-tags.competitors {
+    gap: 8px;
+}
+
+.property-tag {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.property-tag.yours {
+    background: linear-gradient(135deg, var(--navy-700), var(--navy-800));
+    border-color: var(--gold-400);
+    color: #fff;
+}
+
+.property-tag.competitor {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    background: var(--bg-secondary);
+    border-color: var(--chartColors-tracked, #8b5cf6);
+    color: var(--text-primary);
+}
+
+.property-tag.competitor:hover {
+    border-color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+}
+
+.tag-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--navy-300);
+}
+
+.property-tag.yours .tag-id {
+    color: var(--gold-400);
+}
+
+/* Data Status Grid */
+.data-status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.status-item .status-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+}
+
+.status-item .status-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.status-value.demo {
+    color: var(--gold-500);
+}
+
+.status-value.live {
+    color: var(--success);
+}
+
+.status-value.partial {
+    color: #f97316;
+}
+
+/* Button Row Updates */
+.button-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.button-row .btn {
+    flex: 1;
+    min-width: 150px;
+    justify-content: center;
+}
+
+/* Update Modal Improvements */
+.modal-body .api-calls-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+}
+
+.api-calls-info .calls-label {
+    color: var(--text-tertiary);
+}
+
+.api-calls-info .calls-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Warning Banner */
+.limit-warning {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(249, 115, 22, 0.15);
+    border: 1px solid #f97316;
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+    color: #f97316;
+}
+
+.limit-warning svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.limit-warning-text {
+    font-size: 0.875rem;
+}
+
+/* Competitor Highlighting in Tables */
+.hotels-table tr.tracked-competitor td {
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.hotels-table tr.your-hotel td {
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.competitor-table tr.tracked-competitor td {
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.competitor-table tr.your-hotel td {
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.hotel-name.yours {
+    color: var(--gold-500);
+    font-weight: 600;
+}
+
+.hotel-name.competitor {
+    color: #8b5cf6;
+}
+
+/* Calendar Day Highlighting for Partial Data */
+.calendar-day.partial-data {
+    border-style: dashed;
+    opacity: 0.7;
+}
+
+.calendar-day.partial-data::after {
+    content: '~';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+}
+
+/* Responsive Updates */
+@media (max-width: 768px) {
+    .api-credits-display {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .fetch-estimate {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .data-status-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .button-row .btn {
+        min-width: 100%;
+    }
+}
