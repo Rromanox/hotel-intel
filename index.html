@@ -7,8 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet JS for Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
     <!-- Login Screen -->
@@ -95,6 +99,13 @@
                             <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                         </svg>
                         <span>Monthly Views</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="map">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                            <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+                        </svg>
+                        <span>Map View</span>
                     </a>
                     <a href="#" class="nav-item" data-page="analytics">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -275,7 +286,10 @@
                             <span class="title-icon">★</span>
                             Your Properties
                         </h2>
-                        <span class="section-badge">Live Tracking</span>
+                        <div class="section-meta">
+                            <span class="current-date-label" id="your-properties-date">--</span>
+                            <span class="section-badge">Live Tracking</span>
+                        </div>
                     </div>
                     
                     <div class="your-hotels-grid">
@@ -358,6 +372,10 @@
                     <div class="section-header">
                         <h2 class="section-title">Market Overview</h2>
                         <div class="section-actions">
+                            <div class="view-toggle">
+                                <button class="toggle-btn active" id="view-daily" data-view="daily">Daily</button>
+                                <button class="toggle-btn" id="view-monthly" data-view="monthly">Month Avg</button>
+                            </div>
                             <select id="date-selector" class="date-select">
                                 <option value="">Select Date</option>
                             </select>
@@ -467,6 +485,101 @@
                     </div>
                     <div class="chart-container">
                         <canvas id="rate-trend-chart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Price Intelligence Section -->
+                <section class="price-intelligence-section">
+                    <div class="section-header">
+                        <h2 class="section-title">📊 Price Intelligence</h2>
+                        <span class="section-badge">Analytics</span>
+                    </div>
+                    
+                    <div class="intelligence-grid">
+                        <!-- Price Position Card -->
+                        <div class="intel-card">
+                            <div class="intel-header">
+                                <h3>🎯 Your Price Position</h3>
+                                <span class="intel-date" id="position-date">--</span>
+                            </div>
+                            <div class="intel-body">
+                                <div class="position-display">
+                                    <span class="position-rank" id="your-position-rank">#--</span>
+                                    <span class="position-total">out of <span id="position-total">--</span> hotels</span>
+                                </div>
+                                <div class="position-bar">
+                                    <div class="position-marker" id="position-marker" style="left: 50%"></div>
+                                    <div class="position-labels">
+                                        <span>Cheapest</span>
+                                        <span>Most Expensive</span>
+                                    </div>
+                                </div>
+                                <div class="position-tier" id="position-tier">Mid-Range</div>
+                            </div>
+                        </div>
+
+                        <!-- Price Gap Analysis -->
+                        <div class="intel-card">
+                            <div class="intel-header">
+                                <h3>📈 Price Gap Analysis</h3>
+                            </div>
+                            <div class="intel-body">
+                                <div class="gap-display">
+                                    <div class="gap-item">
+                                        <span class="gap-label">vs Market Average</span>
+                                        <span class="gap-value" id="gap-vs-avg">$--</span>
+                                    </div>
+                                    <div class="gap-item">
+                                        <span class="gap-label">vs Cheapest</span>
+                                        <span class="gap-value" id="gap-vs-low">$--</span>
+                                    </div>
+                                    <div class="gap-item">
+                                        <span class="gap-label">vs Most Expensive</span>
+                                        <span class="gap-value" id="gap-vs-high">$--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Price Alerts -->
+                        <div class="intel-card">
+                            <div class="intel-header">
+                                <h3>🚨 Price Alerts</h3>
+                                <span class="alert-count" id="alert-count">0</span>
+                            </div>
+                            <div class="intel-body">
+                                <div class="alerts-list" id="price-alerts">
+                                    <div class="no-alerts">No significant price changes detected</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Event Impact Detection -->
+                        <div class="intel-card">
+                            <div class="intel-header">
+                                <h3>📅 High Demand Dates</h3>
+                            </div>
+                            <div class="intel-body">
+                                <div class="events-list" id="high-demand-dates">
+                                    <div class="no-events">Analyzing price patterns...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Hotel Price History Chart -->
+                <section class="chart-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Competitor Price History</h2>
+                        <div class="section-actions">
+                            <select id="competitor-select" class="date-select">
+                                <option value="">Select Competitor</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="competitor-history-chart"></canvas>
                     </div>
                 </section>
 
@@ -672,6 +785,50 @@
                 </section>
             </div>
 
+            <!-- Map View Page -->
+            <div class="page" id="page-map">
+                <section class="map-section">
+                    <div class="section-header">
+                        <h2 class="section-title">🗺️ Mackinaw City Hotel Map</h2>
+                        <div class="map-controls">
+                            <select id="map-date-selector" class="date-select">
+                                <option value="">Select Date</option>
+                            </select>
+                            <div class="map-legend">
+                                <span class="legend-item"><span class="marker-yours"></span> Your Hotels</span>
+                                <span class="legend-item"><span class="marker-competitor"></span> Competitors</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-container" id="hotel-map"></div>
+                    <div class="map-stats" id="map-stats">
+                        <div class="map-stat">
+                            <span class="stat-label">Hotels Shown</span>
+                            <span class="stat-value" id="map-hotel-count">--</span>
+                        </div>
+                        <div class="map-stat">
+                            <span class="stat-label">Price Range</span>
+                            <span class="stat-value" id="map-price-range">$-- - $--</span>
+                        </div>
+                        <div class="map-stat">
+                            <span class="stat-label">Market Avg</span>
+                            <span class="stat-value" id="map-market-avg">$--</span>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Hotel List Below Map -->
+                <section class="map-hotel-list-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Hotel Details</h2>
+                        <span class="section-badge" id="map-selected-date">--</span>
+                    </div>
+                    <div class="map-hotel-grid" id="map-hotel-grid">
+                        <p class="placeholder-text">Select a date to view hotel rates on the map</p>
+                    </div>
+                </section>
+            </div>
+
             <!-- Settings Page -->
             <div class="page" id="page-settings">
                 <div class="settings-grid">
@@ -733,6 +890,29 @@
                             <div class="coverage-stat">
                                 <span class="coverage-label">Date Range Covered:</span>
                                 <span class="coverage-value" id="date-range-display">--</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Database Sync Log Section - NEW -->
+                    <section class="settings-section">
+                        <h3 class="settings-title">☁️ Database Sync Log</h3>
+                        <div class="db-sync-container">
+                            <div class="db-sync-header">
+                                <div class="db-status">
+                                    <span class="db-status-indicator" id="db-status-indicator">●</span>
+                                    <span id="db-status-text">Checking...</span>
+                                </div>
+                                <div class="db-actions">
+                                    <button class="btn btn-small btn-secondary" id="check-db-btn">Check Database</button>
+                                    <button class="btn btn-small btn-primary" id="sync-from-db-btn">Sync From Cloud</button>
+                                </div>
+                            </div>
+                            <div class="db-summary" id="db-summary">
+                                <div class="db-loading">Loading database info...</div>
+                            </div>
+                            <div class="db-months-grid" id="db-months-grid">
+                                <!-- Populated by JS -->
                             </div>
                         </div>
                     </section>

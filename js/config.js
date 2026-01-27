@@ -17,6 +17,7 @@ const CONFIG = {
         
         // Database endpoints
         ratesUrl: 'https://hotel-intel-api-awb4.onrender.com/api/rates',
+        summaryUrl: 'https://hotel-intel-api-awb4.onrender.com/api/rates/summary',
         
         // API provider
         provider: 'serpapi',
@@ -26,6 +27,43 @@ const CONFIG = {
             adults: '2',
             currency: 'USD'
         }
+    },
+
+    // Map settings - Mackinaw City center
+    map: {
+        center: [45.7856, -84.7273],
+        zoom: 14
+    },
+
+    // ===========================================
+    // HOTEL COORDINATES (approximate locations in Mackinaw City)
+    // ===========================================
+    hotelCoordinates: {
+        // Your Hotels
+        'Riviera Motel': [45.7851, -84.7301],
+        'American Boutique Inn': [45.7867, -84.7285],
+        
+        // Competitors (approximate locations along main strip)
+        'Super 8 by Wyndham Mackinaw City/Beachfront Area': [45.7849, -84.7265],
+        'Super 8 by Wyndham Bridgeview of Mackinaw City': [45.7862, -84.7312],
+        'Lighthouse View Motel': [45.7873, -84.7258],
+        'Days Inn by Wyndham Mackinaw City - Lakeview': [45.7858, -84.7245],
+        'Comfort Inn Lakeside': [45.7845, -84.7288],
+        'Quality Inn & Suites Mackinaw City Beachfront': [45.7839, -84.7271],
+        'Baymont by Wyndham Mackinaw City': [45.7876, -84.7295],
+        'Holiday Inn Express Mackinaw City by IHG': [45.7882, -84.7267],
+        'Clarion Hotel Mackinaw City Beachfront': [45.7835, -84.7252],
+        'Best Western Plus Dockside Waterfront Inn': [45.7869, -84.7233],
+        'Clearwater Lakeshore Motel': [45.7854, -84.7218],
+        'Ramada by Wyndham Mackinaw City Waterfront': [45.7843, -84.7205],
+        'Bridge Vista Beach Hotel & Convention Center': [45.7889, -84.7245],
+        'Bayside Hotel of Mackinac': [45.7831, -84.7298],
+        'Hamilton Inn': [45.7864, -84.7275],
+        'Bridgeview Motel': [45.7871, -84.7308],
+        'Crown Choice Inn': [45.7847, -84.7282],
+        'Apple Blossom Inn': [45.7859, -84.7291],
+        'Voyager Inn of Saint Ignace': [45.8667, -84.7267],
+        'Cedar Hill Lodge': [45.7878, -84.7255]
     },
 
     // ===========================================

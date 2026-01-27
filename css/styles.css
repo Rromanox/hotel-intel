@@ -3169,3 +3169,609 @@ body {
         display: block;
     }
 }
+
+/* ============================================
+   PRICE INTELLIGENCE SECTION
+   ============================================ */
+
+.price-intelligence-section {
+    margin-top: 24px;
+}
+
+.intelligence-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .intelligence-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.intel-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.intel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.intel-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.intel-date {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.intel-body {
+    padding: 20px;
+}
+
+/* Price Position */
+.position-display {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.position-rank {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--gold-500);
+}
+
+.position-total {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+.position-bar {
+    position: relative;
+    height: 8px;
+    background: linear-gradient(90deg, var(--success), var(--gold-500), var(--danger));
+    border-radius: 4px;
+    margin: 16px 0 8px;
+}
+
+.position-marker {
+    position: absolute;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.position-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.position-tier {
+    text-align: center;
+    margin-top: 16px;
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    color: var(--gold-500);
+}
+
+/* Price Gap Analysis */
+.gap-display {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.gap-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.gap-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.gap-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.gap-value.positive {
+    color: var(--success);
+}
+
+.gap-value.negative {
+    color: var(--danger);
+}
+
+.gap-value.neutral {
+    color: var(--text-tertiary);
+}
+
+/* Price Alerts */
+.alert-count {
+    background: var(--danger);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.alert-count.none {
+    background: var(--text-tertiary);
+}
+
+.alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--danger);
+}
+
+.alert-item.price-drop {
+    border-left-color: var(--success);
+}
+
+.alert-icon {
+    font-size: 1.2rem;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-hotel {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.alert-detail {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.no-alerts, .no-events {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: 20px;
+    font-size: 0.9rem;
+}
+
+/* High Demand Dates */
+.events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.event-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.event-date {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.event-detail {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.event-spike {
+    color: var(--danger);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* View Toggle */
+.view-toggle {
+    display: flex;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    margin-right: 12px;
+}
+
+.toggle-btn {
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.toggle-btn.active {
+    background: var(--gold-500);
+    color: var(--bg-primary);
+}
+
+.toggle-btn:hover:not(.active) {
+    color: var(--text-primary);
+}
+
+/* Section Meta */
+.section-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.current-date-label {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    padding: 4px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+/* ============================================
+   MAP VIEW STYLES
+   ============================================ */
+
+.map-section {
+    margin-bottom: 24px;
+}
+
+.map-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.map-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+}
+
+.map-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+}
+
+.marker-yours {
+    width: 12px;
+    height: 12px;
+    background: var(--gold-500);
+    border-radius: 50%;
+}
+
+.marker-competitor {
+    width: 12px;
+    height: 12px;
+    background: var(--navy-400);
+    border-radius: 50%;
+}
+
+.map-container {
+    height: 500px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.map-stats {
+    display: flex;
+    gap: 24px;
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.map-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.map-stat .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.map-stat .stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.map-hotel-list-section {
+    margin-top: 24px;
+}
+
+.map-hotel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.map-hotel-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    transition: all var(--transition-fast);
+}
+
+.map-hotel-card:hover {
+    border-color: var(--gold-500);
+    transform: translateY(-2px);
+}
+
+.map-hotel-card.your-hotel {
+    border-left: 3px solid var(--gold-500);
+}
+
+.map-hotel-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.map-hotel-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gold-500);
+}
+
+.map-hotel-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+/* Leaflet Popup Styles */
+.leaflet-popup-content-wrapper {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.leaflet-popup-content {
+    margin: 12px;
+    color: var(--text-primary);
+}
+
+.leaflet-popup-tip {
+    background: var(--bg-secondary);
+}
+
+.hotel-popup {
+    min-width: 180px;
+}
+
+.hotel-popup-name {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.hotel-popup-price {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--gold-500);
+    margin-bottom: 8px;
+}
+
+.hotel-popup-meta {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.hotel-popup-yours {
+    display: inline-block;
+    background: var(--gold-500);
+    color: var(--bg-primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+/* ============================================
+   DATABASE SYNC LOG STYLES
+   ============================================ */
+
+.db-sync-container {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+}
+
+.db-sync-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.db-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.db-status-indicator {
+    font-size: 1.2rem;
+}
+
+.db-status-indicator.online {
+    color: var(--success);
+}
+
+.db-status-indicator.offline {
+    color: var(--danger);
+}
+
+.db-status-indicator.checking {
+    color: var(--gold-500);
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.db-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.db-summary {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.db-summary-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.db-summary-stat {
+    text-align: center;
+}
+
+.db-summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gold-500);
+}
+
+.db-summary-label {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.db-months-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.db-month-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    text-align: center;
+}
+
+.db-month-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.db-month-count {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--gold-500);
+}
+
+.db-month-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.db-month-card.complete {
+    border: 1px solid var(--success);
+}
+
+.db-month-card.partial {
+    border: 1px solid var(--gold-500);
+}
+
+.db-month-card.empty {
+    border: 1px solid var(--border-color);
+    opacity: 0.6;
+}
+
+.db-loading {
+    text-align: center;
+    color: var(--text-tertiary);
+    padding: 20px;
+}
+
+@media (max-width: 768px) {
+    .map-container {
+        height: 350px;
+    }
+    
+    .map-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .map-stats {
+        flex-wrap: wrap;
+    }
+    
+    .db-summary-stats {
+        grid-template-columns: 1fr;
+    }
+}

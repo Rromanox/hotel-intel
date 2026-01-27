@@ -9,6 +9,10 @@ const UI = {
     currentMonth: { year: 2026, month: 5 },
     selectedDate: null,
     eventsBound: false,
+    marketViewMode: 'daily',
+    competitorChart: null,
+    map: null,
+    hotelMarkers: [],
 
     /**
      * Initialize UI elements and event listeners
@@ -92,6 +96,24 @@ const UI = {
             priceDistributionChart: document.getElementById('price-distribution-chart'),
             comparisonChart: document.getElementById('comparison-chart'),
             positionChart: document.getElementById('position-chart'),
+            competitorHistoryChart: document.getElementById('competitor-history-chart'),
+            
+            // Price Intelligence
+            yourPropertiesDate: document.getElementById('your-properties-date'),
+            viewDailyBtn: document.getElementById('view-daily'),
+            viewMonthlyBtn: document.getElementById('view-monthly'),
+            positionDate: document.getElementById('position-date'),
+            yourPositionRank: document.getElementById('your-position-rank'),
+            positionTotal: document.getElementById('position-total'),
+            positionMarker: document.getElementById('position-marker'),
+            positionTier: document.getElementById('position-tier'),
+            gapVsAvg: document.getElementById('gap-vs-avg'),
+            gapVsLow: document.getElementById('gap-vs-low'),
+            gapVsHigh: document.getElementById('gap-vs-high'),
+            alertCount: document.getElementById('alert-count'),
+            priceAlerts: document.getElementById('price-alerts'),
+            highDemandDates: document.getElementById('high-demand-dates'),
+            competitorSelect: document.getElementById('competitor-select'),
             
             // Calculator
             calcCurrentRate: document.getElementById('calc-current-rate'),
@@ -175,6 +197,23 @@ const UI = {
             closeResults: document.getElementById('close-results'),
             closeResultsBtn: document.getElementById('close-results-btn'),
             
+            // Map View
+            hotelMap: document.getElementById('hotel-map'),
+            mapDateSelector: document.getElementById('map-date-selector'),
+            mapHotelCount: document.getElementById('map-hotel-count'),
+            mapPriceRange: document.getElementById('map-price-range'),
+            mapMarketAvg: document.getElementById('map-market-avg'),
+            mapSelectedDate: document.getElementById('map-selected-date'),
+            mapHotelGrid: document.getElementById('map-hotel-grid'),
+            
+            // Database Sync
+            dbStatusIndicator: document.getElementById('db-status-indicator'),
+            dbStatusText: document.getElementById('db-status-text'),
+            checkDbBtn: document.getElementById('check-db-btn'),
+            syncFromDbBtn: document.getElementById('sync-from-db-btn'),
+            dbSummary: document.getElementById('db-summary'),
+            dbMonthsGrid: document.getElementById('db-months-grid'),
+            
             // Toast container
             toastContainer: document.getElementById('toast-container')
         };
@@ -245,6 +284,31 @@ const UI = {
             }
         });
 
+        // View toggle (Daily/Monthly)
+        this.elements.viewDailyBtn?.addEventListener('click', () => {
+            this.elements.viewDailyBtn.classList.add('active');
+            this.elements.viewMonthlyBtn?.classList.remove('active');
+            this.elements.dateSelector.style.display = '';
+            this.marketViewMode = 'daily';
+            const selectedDate = this.elements.dateSelector?.value;
+            if (selectedDate) this.updateMarketOverview(selectedDate);
+        });
+        
+        this.elements.viewMonthlyBtn?.addEventListener('click', () => {
+            this.elements.viewMonthlyBtn.classList.add('active');
+            this.elements.viewDailyBtn?.classList.remove('active');
+            this.elements.dateSelector.style.display = 'none';
+            this.marketViewMode = 'monthly';
+            this.updateMarketOverviewMonthly();
+        });
+
+        // Competitor select for history chart
+        this.elements.competitorSelect?.addEventListener('change', (e) => {
+            if (e.target.value) {
+                this.updateCompetitorHistoryChart(e.target.value);
+            }
+        });
+
         // Calendar navigation
         this.elements.prevMonth?.addEventListener('pointerup', (e) => {
             e.preventDefault();
@@ -298,6 +362,26 @@ const UI = {
 
         this.elements.forceUpdateBtn?.addEventListener('click', () => {
             App.performUpdate();
+        });
+
+        // Map date selector
+        this.elements.mapDateSelector?.addEventListener('change', (e) => {
+            if (e.target.value) {
+                this.updateMapForDate(e.target.value);
+            }
+        });
+
+        // Database sync buttons
+        this.elements.checkDbBtn?.addEventListener('click', () => {
+            this.checkDatabaseStatus();
+        });
+
+        this.elements.syncFromDbBtn?.addEventListener('click', async () => {
+            this.showToast('Syncing from database...', 'info');
+            await API.syncWithDatabase();
+            this.checkDatabaseStatus();
+            App.loadExistingData();
+            this.showToast('Sync complete!', 'success');
         });
 
         // Check API Credits button
@@ -457,6 +541,7 @@ const UI = {
         const titles = {
             dashboard: 'Dashboard',
             monthly: 'Monthly Views',
+            map: 'Map View',
             analytics: 'Analytics Hub',
             competitors: 'Competitor Intelligence',
             settings: 'Settings'
@@ -470,10 +555,14 @@ const UI = {
             // Refresh calendar when navigating to monthly view
             this.renderCalendar();
             this.updateMonthDataBanner();
+        } else if (pageName === 'map') {
+            this.initMap();
         } else if (pageName === 'analytics') {
             this.initAnalyticsCharts();
         } else if (pageName === 'competitors') {
             this.initCompetitorPage();
+        } else if (pageName === 'settings') {
+            this.checkDatabaseStatus();
         }
 
         // Close mobile sidebar
@@ -775,6 +864,14 @@ const UI = {
         const stats = Storage.getDateStats(targetDate);
         const yourHotels = Storage.getYourHotelsData(targetDate);
 
+        // Update "Your Properties" date display
+        if (this.elements.yourPropertiesDate) {
+            const d = new Date(targetDate + 'T00:00:00');
+            this.elements.yourPropertiesDate.textContent = d.toLocaleDateString('en-US', { 
+                weekday: 'short', month: 'short', day: 'numeric' 
+            });
+        }
+
         // Update market metrics
         if (stats) {
             this.elements.lowestRate.textContent = formatCurrency(stats.lowest);
@@ -828,6 +925,9 @@ const UI = {
         if (this.elements.dateSelector) {
             this.elements.dateSelector.value = targetDate;
         }
+
+        // Update Price Intelligence
+        this.updatePriceIntelligence(targetDate, stats, yourHotels, portfolioAvg);
     },
 
     /**
@@ -1033,7 +1133,13 @@ const UI = {
         }
 
         // Next update
-        this.elements.nextUpdate.textContent = `${daysUntil}d`;
+        if (daysUntil > 0) {
+            this.elements.nextUpdate.textContent = `${daysUntil}d`;
+        } else if (lastUpdate) {
+            this.elements.nextUpdate.textContent = 'Now';
+        } else {
+            this.elements.nextUpdate.textContent = '--';
+        }
 
         // Last update time
         if (lastUpdate) {
@@ -1817,5 +1923,694 @@ const UI = {
     closeFetchResultsModal() {
         const modal = this.elements.fetchResultsModal;
         if (modal) modal.classList.remove('active');
+    },
+
+    // ============================================
+    // PRICE INTELLIGENCE FUNCTIONS
+    // ============================================
+
+    /**
+     * Update all price intelligence sections
+     */
+    updatePriceIntelligence(dateStr, stats, yourHotels, portfolioAvg) {
+        this.updatePricePosition(dateStr, stats, yourHotels, portfolioAvg);
+        this.updatePriceGap(stats, portfolioAvg);
+        this.updatePriceAlerts();
+        this.updateHighDemandDates();
+        this.populateCompetitorSelect();
+    },
+
+    /**
+     * Update price position display
+     */
+    updatePricePosition(dateStr, stats, yourHotels, portfolioAvg) {
+        if (!this.elements.yourPositionRank) return;
+        
+        // Get your hotel's position (using American Boutique as primary)
+        const american = yourHotels.find(h => h.name?.toLowerCase().includes('american'));
+        const position = american?.marketPosition;
+        const total = stats?.count || 0;
+        
+        // Update date
+        if (this.elements.positionDate) {
+            const d = new Date(dateStr + 'T00:00:00');
+            this.elements.positionDate.textContent = d.toLocaleDateString('en-US', { 
+                month: 'short', day: 'numeric' 
+            });
+        }
+        
+        // Update rank
+        this.elements.yourPositionRank.textContent = position ? `#${position}` : '#--';
+        if (this.elements.positionTotal) {
+            this.elements.positionTotal.textContent = total || '--';
+        }
+        
+        // Update position marker (0% = cheapest, 100% = most expensive)
+        if (this.elements.positionMarker && position && total) {
+            const percentage = ((position - 1) / (total - 1)) * 100;
+            this.elements.positionMarker.style.left = `${Math.min(100, Math.max(0, percentage))}%`;
+        }
+        
+        // Update tier
+        if (this.elements.positionTier && position && total) {
+            const percentage = position / total;
+            let tier, tierClass;
+            if (percentage <= 0.33) {
+                tier = '💚 Budget-Friendly';
+                tierClass = 'budget';
+            } else if (percentage <= 0.66) {
+                tier = '💛 Mid-Range';
+                tierClass = 'mid';
+            } else {
+                tier = '💎 Premium';
+                tierClass = 'premium';
+            }
+            this.elements.positionTier.textContent = tier;
+        }
+    },
+
+    /**
+     * Update price gap analysis
+     */
+    updatePriceGap(stats, portfolioAvg) {
+        if (!this.elements.gapVsAvg || !portfolioAvg) return;
+        
+        // Gap vs average
+        const gapAvg = portfolioAvg - (stats?.average || 0);
+        this.elements.gapVsAvg.textContent = gapAvg >= 0 ? `+$${gapAvg}` : `-$${Math.abs(gapAvg)}`;
+        this.elements.gapVsAvg.className = `gap-value ${gapAvg >= 0 ? 'positive' : 'negative'}`;
+        
+        // Gap vs lowest
+        const gapLow = portfolioAvg - (stats?.lowest || 0);
+        if (this.elements.gapVsLow) {
+            this.elements.gapVsLow.textContent = `+$${gapLow}`;
+            this.elements.gapVsLow.className = 'gap-value neutral';
+        }
+        
+        // Gap vs highest
+        const gapHigh = portfolioAvg - (stats?.highest || 0);
+        if (this.elements.gapVsHigh) {
+            this.elements.gapVsHigh.textContent = `-$${Math.abs(gapHigh)}`;
+            this.elements.gapVsHigh.className = 'gap-value neutral';
+        }
+    },
+
+    /**
+     * Update price alerts - detect significant competitor price changes
+     */
+    updatePriceAlerts() {
+        if (!this.elements.priceAlerts) return;
+        
+        const data = Storage.loadData();
+        if (!data?.dates) {
+            this.elements.priceAlerts.innerHTML = '<div class="no-alerts">No data to analyze</div>';
+            if (this.elements.alertCount) {
+                this.elements.alertCount.textContent = '0';
+                this.elements.alertCount.classList.add('none');
+            }
+            return;
+        }
+        
+        const dates = Object.keys(data.dates).sort();
+        if (dates.length < 2) {
+            this.elements.priceAlerts.innerHTML = '<div class="no-alerts">Need more data to detect changes</div>';
+            return;
+        }
+        
+        // Compare recent dates to find significant changes
+        const alerts = [];
+        const recentDates = dates.slice(-7); // Last 7 days of data
+        
+        for (let i = 1; i < recentDates.length; i++) {
+            const prevDate = recentDates[i - 1];
+            const currDate = recentDates[i];
+            const prevData = data.dates[prevDate]?.hotels || [];
+            const currData = data.dates[currDate]?.hotels || [];
+            
+            currData.forEach(hotel => {
+                const prevHotel = prevData.find(h => h.name === hotel.name);
+                if (prevHotel && hotel.price && prevHotel.price) {
+                    const change = hotel.price - prevHotel.price;
+                    const changePercent = (change / prevHotel.price) * 100;
+                    
+                    // Alert if >15% change
+                    if (Math.abs(changePercent) >= 15) {
+                        alerts.push({
+                            hotel: hotel.name,
+                            change,
+                            changePercent,
+                            date: currDate,
+                            isDrop: change < 0
+                        });
+                    }
+                }
+            });
+        }
+        
+        // Update alert count
+        if (this.elements.alertCount) {
+            this.elements.alertCount.textContent = alerts.length;
+            this.elements.alertCount.classList.toggle('none', alerts.length === 0);
+        }
+        
+        // Display alerts
+        if (alerts.length === 0) {
+            this.elements.priceAlerts.innerHTML = '<div class="no-alerts">No significant price changes detected</div>';
+        } else {
+            this.elements.priceAlerts.innerHTML = alerts.slice(0, 5).map(alert => `
+                <div class="alert-item ${alert.isDrop ? 'price-drop' : ''}">
+                    <span class="alert-icon">${alert.isDrop ? '📉' : '📈'}</span>
+                    <div class="alert-content">
+                        <div class="alert-hotel">${alert.hotel}</div>
+                        <div class="alert-detail">
+                            ${alert.isDrop ? 'Dropped' : 'Increased'} ${Math.abs(alert.changePercent).toFixed(0)}% 
+                            (${alert.isDrop ? '-' : '+'}$${Math.abs(alert.change)})
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    },
+
+    /**
+     * Update high demand dates - detect price spikes
+     */
+    updateHighDemandDates() {
+        if (!this.elements.highDemandDates) return;
+        
+        const data = Storage.loadData();
+        if (!data?.dates) {
+            this.elements.highDemandDates.innerHTML = '<div class="no-events">No data to analyze</div>';
+            return;
+        }
+        
+        // Calculate average for each date and find outliers
+        const dateAverages = [];
+        Object.entries(data.dates).forEach(([date, dateData]) => {
+            if (dateData.hotels?.length > 0) {
+                const prices = dateData.hotels.map(h => h.price).filter(p => p > 0);
+                if (prices.length > 0) {
+                    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+                    dateAverages.push({ date, avg });
+                }
+            }
+        });
+        
+        if (dateAverages.length < 5) {
+            this.elements.highDemandDates.innerHTML = '<div class="no-events">Need more data to detect patterns</div>';
+            return;
+        }
+        
+        // Calculate overall average
+        const overallAvg = dateAverages.reduce((a, b) => a + b.avg, 0) / dateAverages.length;
+        
+        // Find dates with >20% above average
+        const highDemand = dateAverages
+            .filter(d => d.avg > overallAvg * 1.2)
+            .sort((a, b) => b.avg - a.avg)
+            .slice(0, 5);
+        
+        if (highDemand.length === 0) {
+            this.elements.highDemandDates.innerHTML = '<div class="no-events">No high-demand dates detected</div>';
+        } else {
+            this.elements.highDemandDates.innerHTML = highDemand.map(d => {
+                const spike = ((d.avg - overallAvg) / overallAvg * 100).toFixed(0);
+                const dateObj = new Date(d.date + 'T00:00:00');
+                const dateStr = dateObj.toLocaleDateString('en-US', { 
+                    weekday: 'short', month: 'short', day: 'numeric' 
+                });
+                return `
+                    <div class="event-item">
+                        <div>
+                            <div class="event-date">${dateStr}</div>
+                            <div class="event-detail">Avg: $${Math.round(d.avg)}</div>
+                        </div>
+                        <span class="event-spike">+${spike}%</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    },
+
+    /**
+     * Populate competitor select dropdown
+     */
+    populateCompetitorSelect() {
+        if (!this.elements.competitorSelect) return;
+        
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        // Get all unique hotel names
+        const hotels = new Set();
+        Object.values(data.dates).forEach(dateData => {
+            dateData.hotels?.forEach(h => {
+                if (h.name && !isYourHotel(h.name)) {
+                    hotels.add(h.name);
+                }
+            });
+        });
+        
+        const sortedHotels = [...hotels].sort();
+        this.elements.competitorSelect.innerHTML = `
+            <option value="">Select Competitor</option>
+            ${sortedHotels.map(h => `<option value="${h}">${h}</option>`).join('')}
+        `;
+    },
+
+    /**
+     * Update competitor history chart
+     */
+    updateCompetitorHistoryChart(hotelName) {
+        if (!this.elements.competitorHistoryChart) return;
+        
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        const ctx = this.elements.competitorHistoryChart.getContext('2d');
+        
+        // Destroy existing chart
+        if (this.competitorChart) {
+            this.competitorChart.destroy();
+        }
+        
+        // Get price history for selected competitor
+        const dates = Object.keys(data.dates).sort();
+        const competitorPrices = [];
+        const marketAvgs = [];
+        const labels = [];
+        
+        dates.forEach(date => {
+            const dateData = data.dates[date];
+            const hotel = dateData.hotels?.find(h => h.name === hotelName);
+            if (hotel?.price) {
+                const d = new Date(date + 'T00:00:00');
+                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                competitorPrices.push(hotel.price);
+                
+                // Calculate market average for that date
+                const prices = dateData.hotels.map(h => h.price).filter(p => p > 0);
+                const avg = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
+                marketAvgs.push(Math.round(avg));
+            }
+        });
+        
+        this.competitorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: hotelName,
+                        data: competitorPrices,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Market Average',
+                        data: marketAvgs,
+                        borderColor: '#3d5a80',
+                        borderDash: [5, 5],
+                        tension: 0.3,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: '#94a3b8' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { 
+                            color: '#94a3b8',
+                            callback: value => '$' + value
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    },
+
+    /**
+     * Update market overview for whole month
+     */
+    updateMarketOverviewMonthly() {
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        const { year, month } = this.currentMonth;
+        const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+        
+        // Get all dates for current month
+        const monthDates = Object.keys(data.dates)
+            .filter(d => d.startsWith(monthPrefix))
+            .sort();
+        
+        if (monthDates.length === 0) {
+            this.elements.lowestRate.textContent = '--';
+            this.elements.highestRate.textContent = '--';
+            this.elements.marketAvg.textContent = '--';
+            this.elements.priceSpread.textContent = '--';
+            return;
+        }
+        
+        // Aggregate stats for the month
+        let allPrices = [];
+        let lowestOverall = { price: Infinity, hotel: null, date: null };
+        let highestOverall = { price: 0, hotel: null, date: null };
+        
+        monthDates.forEach(date => {
+            const dateData = data.dates[date];
+            dateData.hotels?.forEach(h => {
+                if (h.price > 0) {
+                    allPrices.push(h.price);
+                    if (h.price < lowestOverall.price) {
+                        lowestOverall = { price: h.price, hotel: h.name, date };
+                    }
+                    if (h.price > highestOverall.price) {
+                        highestOverall = { price: h.price, hotel: h.name, date };
+                    }
+                }
+            });
+        });
+        
+        const avg = allPrices.length > 0 
+            ? Math.round(allPrices.reduce((a, b) => a + b, 0) / allPrices.length)
+            : 0;
+        
+        // Update display
+        this.elements.lowestRate.textContent = formatCurrency(lowestOverall.price);
+        this.elements.lowestHotel.textContent = lowestOverall.hotel || '--';
+        this.elements.highestRate.textContent = formatCurrency(highestOverall.price);
+        this.elements.highestHotel.textContent = highestOverall.hotel || '--';
+        this.elements.marketAvg.textContent = formatCurrency(avg);
+        this.elements.avgCount.textContent = `${monthDates.length} days`;
+        this.elements.priceSpread.textContent = formatCurrency(highestOverall.price - lowestOverall.price);
+    },
+
+    // ============================================
+    // MAP FUNCTIONS
+    // ============================================
+
+    /**
+     * Initialize the map
+     */
+    initMap() {
+        if (!this.elements.hotelMap) return;
+        
+        // Populate date selector
+        this.populateMapDateSelector();
+        
+        // Initialize Leaflet map if not already done
+        if (!this.map) {
+            const { center, zoom } = CONFIG.map;
+            this.map = L.map('hotel-map').setView(center, zoom);
+            
+            // Add tile layer (OpenStreetMap)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(this.map);
+        }
+        
+        // Load data for first available date
+        const data = Storage.loadData();
+        if (data?.dates) {
+            const dates = Object.keys(data.dates).sort();
+            if (dates.length > 0) {
+                this.elements.mapDateSelector.value = dates[0];
+                this.updateMapForDate(dates[0]);
+            }
+        }
+    },
+
+    /**
+     * Populate map date selector
+     */
+    populateMapDateSelector() {
+        if (!this.elements.mapDateSelector) return;
+        
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        const dates = Object.keys(data.dates).sort();
+        
+        this.elements.mapDateSelector.innerHTML = `
+            <option value="">Select Date</option>
+            ${dates.map(date => {
+                const d = new Date(date + 'T00:00:00');
+                const label = d.toLocaleDateString('en-US', { 
+                    weekday: 'short', month: 'short', day: 'numeric' 
+                });
+                return `<option value="${date}">${label}</option>`;
+            }).join('')}
+        `;
+    },
+
+    /**
+     * Update map for a specific date
+     */
+    updateMapForDate(dateStr) {
+        if (!this.map) return;
+        
+        const dateData = Storage.getDateData(dateStr);
+        if (!dateData?.hotels) return;
+        
+        // Clear existing markers
+        this.hotelMarkers.forEach(marker => marker.remove());
+        this.hotelMarkers = [];
+        
+        // Get stats
+        const hotels = dateData.hotels.filter(h => h.price > 0);
+        const prices = hotels.map(h => h.price);
+        const lowest = Math.min(...prices);
+        const highest = Math.max(...prices);
+        const avg = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+        
+        // Add markers for each hotel
+        hotels.forEach(hotel => {
+            const coords = this.getHotelCoordinates(hotel.name);
+            if (!coords) return;
+            
+            const isYours = isYourHotel(hotel.name);
+            
+            // Create custom icon
+            const markerColor = isYours ? '#fbbf24' : '#3d5a80';
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    background: ${markerColor};
+                    color: ${isYours ? '#1a1a2e' : 'white'};
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-weight: 600;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                ">$${hotel.price}</div>`,
+                iconSize: [60, 24],
+                iconAnchor: [30, 12]
+            });
+            
+            const marker = L.marker(coords, { icon }).addTo(this.map);
+            
+            // Create popup content
+            const popupContent = `
+                <div class="hotel-popup">
+                    <div class="hotel-popup-name">${hotel.name}</div>
+                    <div class="hotel-popup-price">$${hotel.price}/night</div>
+                    <div class="hotel-popup-meta">
+                        ${hotel.rating ? `Rating: ${hotel.rating.toFixed(1)}★` : ''}
+                        ${hotel.price < avg ? '<br>Below avg' : hotel.price > avg ? '<br>Above avg' : ''}
+                    </div>
+                    ${isYours ? '<span class="hotel-popup-yours">★ Your Hotel</span>' : ''}
+                </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            this.hotelMarkers.push(marker);
+        });
+        
+        // Update stats
+        if (this.elements.mapHotelCount) {
+            this.elements.mapHotelCount.textContent = hotels.length;
+        }
+        if (this.elements.mapPriceRange) {
+            this.elements.mapPriceRange.textContent = `$${lowest} - $${highest}`;
+        }
+        if (this.elements.mapMarketAvg) {
+            this.elements.mapMarketAvg.textContent = `$${avg}`;
+        }
+        if (this.elements.mapSelectedDate) {
+            const d = new Date(dateStr + 'T00:00:00');
+            this.elements.mapSelectedDate.textContent = d.toLocaleDateString('en-US', { 
+                weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' 
+            });
+        }
+        
+        // Update hotel grid
+        this.updateMapHotelGrid(hotels, avg);
+    },
+
+    /**
+     * Get coordinates for a hotel
+     */
+    getHotelCoordinates(hotelName) {
+        // Try exact match first
+        if (CONFIG.hotelCoordinates[hotelName]) {
+            return CONFIG.hotelCoordinates[hotelName];
+        }
+        
+        // Try partial match
+        const nameLower = hotelName.toLowerCase();
+        for (const [name, coords] of Object.entries(CONFIG.hotelCoordinates)) {
+            if (nameLower.includes(name.toLowerCase()) || name.toLowerCase().includes(nameLower)) {
+                return coords;
+            }
+        }
+        
+        // Generate approximate coordinates if not found (spread around center)
+        const baseCoords = CONFIG.map.center;
+        const offset = (Math.random() - 0.5) * 0.01;
+        return [baseCoords[0] + offset, baseCoords[1] + offset];
+    },
+
+    /**
+     * Update the hotel grid below the map
+     */
+    updateMapHotelGrid(hotels, marketAvg) {
+        if (!this.elements.mapHotelGrid) return;
+        
+        const sortedHotels = [...hotels].sort((a, b) => a.price - b.price);
+        
+        this.elements.mapHotelGrid.innerHTML = sortedHotels.map((hotel, index) => {
+            const isYours = isYourHotel(hotel.name);
+            const diff = hotel.price - marketAvg;
+            const diffText = diff >= 0 ? `+$${diff} vs avg` : `-$${Math.abs(diff)} vs avg`;
+            
+            return `
+                <div class="map-hotel-card ${isYours ? 'your-hotel' : ''}">
+                    <div class="map-hotel-name">${isYours ? '★ ' : ''}${hotel.name}</div>
+                    <div class="map-hotel-price">$${hotel.price}</div>
+                    <div class="map-hotel-meta">
+                        <span>#${index + 1} in market</span>
+                        <span>${diffText}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // ============================================
+    // DATABASE SYNC FUNCTIONS
+    // ============================================
+
+    /**
+     * Check database status and display summary
+     */
+    async checkDatabaseStatus() {
+        if (!this.elements.dbStatusIndicator) return;
+        
+        // Show checking state
+        this.elements.dbStatusIndicator.textContent = '●';
+        this.elements.dbStatusIndicator.className = 'db-status-indicator checking';
+        this.elements.dbStatusText.textContent = 'Checking...';
+        
+        try {
+            const response = await fetch(CONFIG.api.summaryUrl);
+            
+            if (!response.ok) {
+                throw new Error('Database unavailable');
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Online
+                this.elements.dbStatusIndicator.className = 'db-status-indicator online';
+                this.elements.dbStatusText.textContent = 'Connected';
+                
+                // Update summary
+                this.updateDatabaseSummary(result);
+            } else {
+                throw new Error('Invalid response');
+            }
+            
+        } catch (error) {
+            console.error('Database check error:', error);
+            this.elements.dbStatusIndicator.className = 'db-status-indicator offline';
+            this.elements.dbStatusText.textContent = 'Offline - ' + error.message;
+            
+            if (this.elements.dbSummary) {
+                this.elements.dbSummary.innerHTML = `
+                    <div class="db-loading">
+                        ⚠️ Could not connect to database<br>
+                        <small>The server may be sleeping. Try again in a minute.</small>
+                    </div>
+                `;
+            }
+        }
+    },
+
+    /**
+     * Update database summary display
+     */
+    updateDatabaseSummary(result) {
+        if (!this.elements.dbSummary) return;
+        
+        const { totalDates, byMonth, allDates } = result;
+        
+        // Summary stats
+        this.elements.dbSummary.innerHTML = `
+            <div class="db-summary-stats">
+                <div class="db-summary-stat">
+                    <div class="db-summary-value">${totalDates}</div>
+                    <div class="db-summary-label">Total Dates</div>
+                </div>
+                <div class="db-summary-stat">
+                    <div class="db-summary-value">${Object.keys(byMonth).length}</div>
+                    <div class="db-summary-label">Months</div>
+                </div>
+                <div class="db-summary-stat">
+                    <div class="db-summary-value">${allDates.length > 0 ? allDates[allDates.length - 1] : '--'}</div>
+                    <div class="db-summary-label">Latest Date</div>
+                </div>
+            </div>
+        `;
+        
+        // Month cards
+        if (this.elements.dbMonthsGrid) {
+            const months = ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
+            const monthNames = ['May', 'June', 'July', 'August', 'September', 'October'];
+            const daysInMonth = [31, 30, 31, 31, 30, 31];
+            
+            this.elements.dbMonthsGrid.innerHTML = months.map((month, idx) => {
+                const monthData = byMonth[month];
+                const count = monthData?.dates?.length || 0;
+                const total = daysInMonth[idx];
+                const status = count === 0 ? 'empty' : count === total ? 'complete' : 'partial';
+                
+                return `
+                    <div class="db-month-card ${status}">
+                        <div class="db-month-name">${monthNames[idx]} 2026</div>
+                        <div class="db-month-count">${count}/${total}</div>
+                        <div class="db-month-label">days stored</div>
+                    </div>
+                `;
+            }).join('');
+        }
     }
 };
