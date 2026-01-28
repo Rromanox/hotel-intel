@@ -750,7 +750,10 @@ const UI = {
      */
     updateTrendChartForMonth(year, month) {
         const data = Storage.loadData();
-        if (!data || !data.dates) return;
+        if (!data || !data.dates) {
+            this.showEmptyTrendChart('No data loaded');
+            return;
+        }
         
         // Filter dates to only show the selected month
         const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
@@ -762,11 +765,15 @@ const UI = {
             }
         });
         
-        // If no data for selected month, show all data with a note
+        // If no data for selected month, show empty state
         const hasData = Object.keys(filteredDates).length > 0;
-        const datesToUse = hasData ? filteredDates : data.dates;
         
-        const trendData = Charts.prepareTrendData(datesToUse, 31);
+        if (!hasData) {
+            this.showEmptyTrendChart(`No data for ${MONTH_NAMES[month - 1]} ${year}`);
+            return;
+        }
+        
+        const trendData = Charts.prepareTrendData(filteredDates, 31);
         
         if (this.elements.rateTrendChart) {
             Charts.createRateTrendChart(
@@ -774,6 +781,50 @@ const UI = {
                 trendData
             );
         }
+    },
+    
+    /**
+     * Show empty state for trend chart
+     */
+    showEmptyTrendChart(message) {
+        if (!this.elements.rateTrendChart) return;
+        
+        const ctx = this.elements.rateTrendChart.getContext('2d');
+        
+        // Destroy existing chart if any
+        if (Charts.instances.rateTrend) {
+            Charts.instances.rateTrend.destroy();
+        }
+        
+        // Create empty chart with message
+        Charts.instances.rateTrend = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [''],
+                datasets: [{
+                    label: 'No Data',
+                    data: [],
+                    borderColor: 'transparent'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: message,
+                        color: '#94a3b8',
+                        font: { size: 16 }
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                }
+            }
+        });
     },
 
     /**
