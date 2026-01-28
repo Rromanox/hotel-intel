@@ -571,6 +571,246 @@ app.delete('/api/rates', async (req, res) => {
     }
 });
 
+// ============================================
+// AUTO-REFRESH ENDPOINT (for daily cron job)
+// ============================================
+
+/**
+ * Auto-refresh all dates from May to October 2026
+ * GET /api/auto-refresh
+ * GET /api/auto-refresh?key=YOUR_SECRET_KEY (optional security)
+ * 
+ * This endpoint fetches rates for all dates in the season
+ * and saves them to MongoDB. Designed to be called by a cron job.
+ */
+app.get('/api/auto-refresh', async (req, res) => {
+    const startTime = Date.now();
+    const secretKey = process.env.REFRESH_SECRET;
+    
+    // Optional security: require a secret key
+    if (secretKey && req.query.key !== secretKey) {
+        return res.status(401).json({ error: 'Invalid or missing key' });
+    }
+    
+    if (!SEARCHAPI_KEY) {
+        return res.status(500).json({ error: 'API key not configured' });
+    }
+    
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+
+    console.log('🔄 AUTO-REFRESH STARTED:', new Date().toISOString());
+    
+    // Define the season: May 1 - October 31, 2026
+    const startDate = new Date('2026-05-01');
+    const endDate = new Date('2026-10-31');
+    
+    const dates = [];
+    let current = new Date(startDate);
+    while (current <= endDate) {
+        dates.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+    }
+    
+    console.log(`📅 Fetching ${dates.length} dates (May 1 - Oct 31, 2026)`);
+    
+    const results = {
+        total: dates.length,
+        success: 0,
+        failed: 0,
+        errors: [],
+        hotelsPerDay: []
+    };
+    
+    // Helper function to fetch a single date
+    const fetchDate = async (dateStr) => {
+        const [year, month, day] = dateStr.split('-');
+        const checkin = `${year}-${parseInt(month)}-${parseInt(day)}`;
+        const checkoutDate = new Date(dateStr);
+        checkoutDate.setDate(checkoutDate.getDate() + 1);
+        const checkout = `${checkoutDate.getFullYear()}-${checkoutDate.getMonth() + 1}-${checkoutDate.getDate()}`;
+        
+        try {
+            const params = new URLSearchParams({
+                engine: 'google_hotels',
+                bounding_box: MACKINAW_BOUNDING_BOX,
+                check_in_date: checkin,
+                check_out_date: checkout,
+                adults: 2,
+                currency: 'USD',
+                gl: 'us',
+                hl: 'en',
+                api_key: SEARCHAPI_KEY
+            });
+
+            const url = `https://www.searchapi.io/api/v1/search?${params}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            const properties = data.properties || [];
+            
+            // Transform properties
+            const hotels = properties.map(p => {
+                const priceBeforeTax = p.price_per_night?.extracted_price_before_taxes 
+                    || p.total_price?.extracted_price_before_taxes;
+                const priceWithTax = p.price_per_night?.extracted_price 
+                    || p.total_price?.extracted_price;
+                const basePrice = priceBeforeTax || priceWithTax || 0;
+                
+                return {
+                    name: p.name,
+                    price: basePrice,
+                    priceWithTax: priceWithTax || 0,
+                    priceBeforeTax: priceBeforeTax || null,
+                    rating: p.rating || null,
+                    reviews: p.reviews || 0,
+                    hotel_class: p.extracted_hotel_class || 0,
+                    deal: p.deal || null,
+                    dealDescription: p.deal_description || null
+                };
+            });
+            
+            // Save to database (same logic as POST /api/rates)
+            const timestamp = new Date().toISOString();
+            const existing = await ratesCollection.findOne({ date: dateStr });
+            
+            if (existing) {
+                // Archive old data to history
+                await historyCollection.insertOne({
+                    date: dateStr,
+                    hotels: existing.hotels,
+                    timestamp: existing.timestamp,
+                    archivedAt: timestamp
+                });
+            }
+            
+            // Upsert current data
+            await ratesCollection.updateOne(
+                { date: dateStr },
+                { 
+                    $set: { 
+                        date: dateStr,
+                        hotels: hotels,
+                        timestamp: timestamp,
+                        hotelCount: hotels.length
+                    }
+                },
+                { upsert: true }
+            );
+            
+            return { success: true, hotels: hotels.length };
+            
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    };
+    
+    // Process dates in batches to avoid rate limiting
+    const BATCH_SIZE = 5;
+    const DELAY_BETWEEN_BATCHES = 2000; // 2 seconds
+    
+    for (let i = 0; i < dates.length; i += BATCH_SIZE) {
+        const batch = dates.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(dates.length / BATCH_SIZE);
+        
+        console.log(`   Batch ${batchNum}/${totalBatches}: ${batch[0]} to ${batch[batch.length - 1]}`);
+        
+        // Process batch in parallel
+        const batchResults = await Promise.all(batch.map(fetchDate));
+        
+        batchResults.forEach((result, idx) => {
+            if (result.success) {
+                results.success++;
+                results.hotelsPerDay.push(result.hotels);
+            } else {
+                results.failed++;
+                results.errors.push({ date: batch[idx], error: result.error });
+            }
+        });
+        
+        // Delay between batches (except for last batch)
+        if (i + BATCH_SIZE < dates.length) {
+            await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+        }
+    }
+    
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const avgHotels = results.hotelsPerDay.length > 0 
+        ? Math.round(results.hotelsPerDay.reduce((a, b) => a + b, 0) / results.hotelsPerDay.length)
+        : 0;
+    
+    console.log('✅ AUTO-REFRESH COMPLETE:');
+    console.log(`   Duration: ${duration}s`);
+    console.log(`   Success: ${results.success}/${results.total}`);
+    console.log(`   Failed: ${results.failed}`);
+    console.log(`   Avg hotels/day: ${avgHotels}`);
+    
+    res.json({
+        success: true,
+        message: 'Auto-refresh complete',
+        timestamp: new Date().toISOString(),
+        duration: `${duration}s`,
+        results: {
+            total: results.total,
+            success: results.success,
+            failed: results.failed,
+            avgHotelsPerDay: avgHotels
+        },
+        errors: results.errors.length > 0 ? results.errors.slice(0, 10) : [] // Only show first 10 errors
+    });
+});
+
+/**
+ * Auto-refresh status/test endpoint
+ * GET /api/auto-refresh/status
+ */
+app.get('/api/auto-refresh/status', async (req, res) => {
+    if (!ratesCollection) {
+        return res.status(503).json({ error: 'Database not available' });
+    }
+    
+    try {
+        // Get latest refresh timestamp
+        const latest = await ratesCollection.findOne({}, { sort: { timestamp: -1 } });
+        const count = await ratesCollection.countDocuments();
+        
+        // Count dates by month
+        const pipeline = [
+            {
+                $group: {
+                    _id: { $substr: ['$date', 0, 7] },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ];
+        const monthCounts = await ratesCollection.aggregate(pipeline).toArray();
+        
+        res.json({
+            success: true,
+            database: {
+                totalDates: count,
+                lastRefresh: latest?.timestamp || 'Never',
+                byMonth: monthCounts.reduce((acc, m) => {
+                    acc[m._id] = m.count;
+                    return acc;
+                }, {})
+            },
+            endpoint: '/api/auto-refresh',
+            note: 'Call /api/auto-refresh to trigger a full refresh of all dates'
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Start server
 connectDB().then(() => {
     app.listen(PORT, () => {
