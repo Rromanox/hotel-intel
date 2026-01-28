@@ -61,6 +61,7 @@ app.use(express.json({ limit: '5mb' }));
 
 // Health check endpoint
 app.get('/', (req, res) => {
+    console.log('🏓 Keep-alive ping received -', new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
     res.json({ 
         status: 'ok', 
         service: 'Mackinaw Intel API (SearchAPI.io + MongoDB)',
