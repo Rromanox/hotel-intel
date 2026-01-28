@@ -734,12 +734,46 @@ const UI = {
         const firstDate = `${year}-${String(month).padStart(2, '0')}-01`;
         this.updateDashboardForDate(firstDate);
 
+        // Update Rate Trends chart filtered by selected month
+        this.updateTrendChartForMonth(year, month);
+
         // Update calendar
         this.currentMonth = { year, month };
         this.renderCalendar();
         
         // Update month data banner
         this.updateMonthDataBanner();
+    },
+    
+    /**
+     * Update Rate Trends chart for a specific month
+     */
+    updateTrendChartForMonth(year, month) {
+        const data = Storage.loadData();
+        if (!data || !data.dates) return;
+        
+        // Filter dates to only show the selected month
+        const monthPrefix = `${year}-${String(month).padStart(2, '0')}`;
+        const filteredDates = {};
+        
+        Object.keys(data.dates).forEach(dateStr => {
+            if (dateStr.startsWith(monthPrefix)) {
+                filteredDates[dateStr] = data.dates[dateStr];
+            }
+        });
+        
+        // If no data for selected month, show all data with a note
+        const hasData = Object.keys(filteredDates).length > 0;
+        const datesToUse = hasData ? filteredDates : data.dates;
+        
+        const trendData = Charts.prepareTrendData(datesToUse, 31);
+        
+        if (this.elements.rateTrendChart) {
+            Charts.createRateTrendChart(
+                this.elements.rateTrendChart.getContext('2d'),
+                trendData
+            );
+        }
     },
 
     /**
@@ -1068,16 +1102,15 @@ const UI = {
      * Update trend chart on dashboard
      */
     updateTrendChart() {
-        const data = Storage.loadData();
-        if (!data || !data.dates) return;
-
-        const trendData = Charts.prepareTrendData(data.dates);
-        
-        if (this.elements.rateTrendChart) {
-            Charts.createRateTrendChart(
-                this.elements.rateTrendChart.getContext('2d'),
-                trendData
-            );
+        // Use the currently selected month from the month buttons
+        const activeBtn = document.querySelector('.month-btn.active');
+        if (activeBtn && activeBtn.dataset.month) {
+            const [year, month] = activeBtn.dataset.month.split('-');
+            this.updateTrendChartForMonth(parseInt(year), parseInt(month));
+        } else {
+            // Fallback to current month
+            const { year, month } = this.currentMonth;
+            this.updateTrendChartForMonth(year, month);
         }
     },
 
