@@ -3816,139 +3816,158 @@ const UI = {
         if (weekLabel) {
             const startStr = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const endStr = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            weekLabel.textContent = `${startStr} - ${endStr}`;
+            weekLabel.textContent = startStr + ' - ' + endStr;
         }
         
-        // Get dates for this week
+        // Get dates for this week (Mon-Sun)
         const weekDates = [];
         for (let i = 0; i < 7; i++) {
             const d = new Date(weekStart);
             d.setDate(d.getDate() + i);
-            weekDates.push(d.toISOString().split('T')[0]);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            weekDates.push(year + '-' + month + '-' + day);
         }
         
         // Update header row
         const headerRow = document.getElementById('weekly-header-row');
         if (headerRow) {
-            headerRow.innerHTML = '<th>Hotel</th>' + weekDates.map(d => {
-                const dateObj = new Date(d + 'T00:00:00');
+            let headerHtml = '<th>Hotel</th>';
+            for (let i = 0; i < weekDates.length; i++) {
+                const dateObj = new Date(weekDates[i] + 'T00:00:00');
                 const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
                 const dayNum = dateObj.getDate();
-                return `<th>${dayName}<br>${dayNum}</th>`;
-            }).join('');
+                headerHtml += '<th>' + dayName + '<br>' + dayNum + '</th>';
+            }
+            headerRow.innerHTML = headerHtml;
         }
         
-        // Collect all hotels (yours + direct competitors)
-        const allHotels = new Map();
-        
-        weekDates.forEach(dateStr => {
+        // Collect unique hotels (yours + direct competitors)
+        const hotelNames = new Set();
+        for (let i = 0; i < weekDates.length; i++) {
+            const dateStr = weekDates[i];
             const dateData = data.dates[dateStr];
-            if (!dateData?.hotels) return;
-            
-            dateData.hotels.forEach(hotel => {
-                if (isYourHotel(hotel.name) || isDirectCompetitor(hotel.name)) {
-                    if (!allHotels.has(hotel.name)) {
-                        allHotels.set(hotel.name, {
-                            name: hotel.name,
-                            isYours: isYourHotel(hotel.name),
-                            isDirect: isDirectCompetitor(hotel.name),
-                            prices: {}
-                        });
+            if (dateData && dateData.hotels) {
+                for (let j = 0; j < dateData.hotels.length; j++) {
+                    const hotel = dateData.hotels[j];
+                    if (isYourHotel(hotel.name) || isDirectCompetitor(hotel.name)) {
+                        hotelNames.add(hotel.name);
                     }
-                    allHotels.get(hotel.name).prices[dateStr] = hotel.price;
                 }
-            });
+            }
+        }
+        
+        // Convert to array and sort (yours first)
+        const sortedHotels = Array.from(hotelNames).sort(function(a, b) {
+            const aYours = isYourHotel(a);
+            const bYours = isYourHotel(b);
+            if (aYours && !bYours) return -1;
+            if (!aYours && bYours) return 1;
+            return a.localeCompare(b);
         });
         
-        // Sort: Your hotels first, then direct competitors
-        const sortedHotels = Array.from(allHotels.values()).sort((a, b) => {
-            if (a.isYours && !b.isYours) return -1;
-            if (!a.isYours && b.isYours) return 1;
-            return a.name.localeCompare(b.name);
-        });
+        // Build price lookup: hotelName -> dateStr -> price
+        const priceMap = {};
+        for (let i = 0; i < weekDates.length; i++) {
+            const dateStr = weekDates[i];
+            const dateData = data.dates[dateStr];
+            if (dateData && dateData.hotels) {
+                for (let j = 0; j < dateData.hotels.length; j++) {
+                    const hotel = dateData.hotels[j];
+                    if (!priceMap[hotel.name]) {
+                        priceMap[hotel.name] = {};
+                    }
+                    priceMap[hotel.name][dateStr] = hotel.price;
+                }
+            }
+        }
         
-        // Calculate your average price per day for comparison
+        // Calculate your average price per day
         const yourAvgByDate = {};
-        weekDates.forEach(dateStr => {
-            const yourPrices = sortedHotels
-                .filter(h => h.isYours && h.prices[dateStr])
-                .map(h => h.prices[dateStr]);
-            yourAvgByDate[dateStr] = yourPrices.length > 0 
-                ? yourPrices.reduce((a, b) => a + b, 0) / yourPrices.length 
-                : null;
-        });
+        for (let i = 0; i < weekDates.length; i++) {
+            const dateStr = weekDates[i];
+            let sum = 0;
+            let count = 0;
+            for (let j = 0; j < sortedHotels.length; j++) {
+                const name = sortedHotels[j];
+                if (isYourHotel(name) && priceMap[name] && priceMap[name][dateStr]) {
+                    sum += priceMap[name][dateStr];
+                    count++;
+                }
+            }
+            yourAvgByDate[dateStr] = count > 0 ? sum / count : null;
+        }
         
-        // Build table body
+        // Build table body HTML
         const tbody = document.getElementById('weekly-rate-body');
         if (!tbody) return;
         
-        tbody.innerHTML = sortedHotels.map(hotel => {
-            const rowClass = hotel.isYours ? 'row-yours' : (hotel.isDirect ? 'row-direct' : '');
-            const badge = hotel.isYours 
+        let tbodyHtml = '';
+        
+        for (let h = 0; h < sortedHotels.length; h++) {
+            const hotelName = sortedHotels[h];
+            const hotelIsYours = isYourHotel(hotelName);
+            const hotelIsDirect = isDirectCompetitor(hotelName);
+            
+            const rowClass = hotelIsYours ? 'row-yours' : (hotelIsDirect ? 'row-direct' : '');
+            const badge = hotelIsYours 
                 ? '<span class="hotel-badge-small yours">YOU</span>' 
-                : (hotel.isDirect ? '<span class="hotel-badge-small direct">⚔️</span>' : '');
+                : (hotelIsDirect ? '<span class="hotel-badge-small direct">⚔️</span>' : '');
             
-            const nameTruncated = hotel.name.length > 22 ? hotel.name.substring(0, 20) + '...' : hotel.name;
+            const nameTruncated = hotelName.length > 22 ? hotelName.substring(0, 20) + '...' : hotelName;
             
-            const cells = weekDates.map((dateStr, idx) => {
-                const price = hotel.prices[dateStr];
-                const prevDateStr = idx > 0 ? weekDates[idx - 1] : null;
-                const prevPrice = prevDateStr ? hotel.prices[prevDateStr] : null;
+            // Start row
+            tbodyHtml += '<tr class="' + rowClass + '">';
+            
+            // Hotel name cell
+            tbodyHtml += '<td><div class="hotel-name-cell">' + badge + '<span title="' + hotelName + '">' + nameTruncated + '</span></div></td>';
+            
+            // Price cells for each day
+            for (let d = 0; d < weekDates.length; d++) {
+                const dateStr = weekDates[d];
+                const price = priceMap[hotelName] ? priceMap[hotelName][dateStr] : null;
+                
+                // Get previous day's price
+                let prevPrice = null;
+                if (d > 0) {
+                    const prevDateStr = weekDates[d - 1];
+                    prevPrice = priceMap[hotelName] ? priceMap[hotelName][prevDateStr] : null;
+                }
                 
                 if (!price) {
-                    return '<td class="rate-cell no-data">--</td>';
+                    tbodyHtml += '<td class="rate-cell no-data"><span style="color: var(--text-tertiary);">--</span></td>';
+                } else {
+                    // Check if competitor is cheaper
+                    const yourAvg = yourAvgByDate[dateStr];
+                    const isCheaper = !hotelIsYours && yourAvg && price < yourAvg;
+                    const cellClass = isCheaper ? 'rate-cell competitor-cheaper' : 'rate-cell';
+                    
+                    // Build change HTML
+                    let changeHtml = '';
+                    if (prevPrice && price !== prevPrice) {
+                        const diff = price - prevPrice;
+                        const isUp = diff > 0;
+                        const changeClass = isUp ? 'increased' : 'decreased';
+                        const arrow = isUp ? '↑' : '↓';
+                        const sign = isUp ? '+' : '';
+                        changeHtml = '<div class="rate-old-new">$' + prevPrice + ' → $' + price + '</div>';
+                        changeHtml += '<div class="rate-change ' + changeClass + '"><span class="rate-arrow">' + arrow + '</span> ' + sign + '$' + diff + '</div>';
+                    }
+                    
+                    tbodyHtml += '<td class="' + cellClass + '"><div class="rate-current">$' + price + '</div>' + changeHtml + '</td>';
                 }
-                
-                // Check if competitor is cheaper than you
-                const yourAvg = yourAvgByDate[dateStr];
-                const isCheaper = !hotel.isYours && yourAvg && price < yourAvg;
-                
-                // Check for price change
-                let changeHtml = '';
-                if (prevPrice && price !== prevPrice) {
-                    const diff = price - prevPrice;
-                    const isUp = diff > 0;
-                    changeHtml = `
-                        <div class="rate-old-new">$${prevPrice} → $${price}</div>
-                        <div class="rate-change ${isUp ? 'increased' : 'decreased'}">
-                            <span class="rate-arrow">${isUp ? '↑' : '↓'}</span>
-                            ${isUp ? '+' : ''}$${diff}
-                        </div>
-                    `;
-                }
-                
-                const cellClass = isCheaper ? 'rate-cell competitor-cheaper' : 'rate-cell';
-                
-                return `
-                    <td class="${cellClass}">
-                        <div class="rate-current">$${price}</div>
-                        ${changeHtml}
-                    </td>
-                `;
-            }).join('');
+            }
             
-            return `
-                <tr class="${rowClass}">
-                    <td>
-                        <div class="hotel-name-cell">
-                            ${badge}
-                            <span title="${hotel.name}">${nameTruncated}</span>
-                        </div>
-                    </td>
-                    ${cells}
-                </tr>
-            `;
-        }).join('');
-        
-        // Show message if no data
-        if (sortedHotels.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="${weekDates.length + 1}" style="text-align: center; padding: 40px; color: var(--text-tertiary);">
-                        No data for this week. Try navigating to a different week.
-                    </td>
-                </tr>
-            `;
+            // End row
+            tbodyHtml += '</tr>';
         }
+        
+        // Set tbody content
+        if (sortedHotels.length === 0) {
+            tbodyHtml = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-tertiary);">No data for this week. Try navigating to a different week.</td></tr>';
+        }
+        
+        tbody.innerHTML = tbodyHtml;
     }
 };
