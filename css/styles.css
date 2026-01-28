@@ -5312,10 +5312,12 @@ body {
 
 /* Rate cells */
 .rate-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.rate-cell > div {
+    display: block;
 }
 
 .rate-current {
@@ -5325,9 +5327,8 @@ body {
 
 .rate-change {
     font-size: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    display: block;
+    margin-top: 2px;
 }
 
 .rate-change.increased {
@@ -5345,6 +5346,7 @@ body {
 .rate-old-new {
     font-size: 0.75rem;
     color: var(--text-tertiary);
+    margin-top: 2px;
 }
 
 /* No change */
