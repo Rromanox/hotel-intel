@@ -578,9 +578,9 @@ const UI = {
             dashboard: 'Dashboard',
             monthly: 'Monthly Views',
             map: 'Map View',
-            myhotels: 'My Hotels',
+            myhotels: 'Direct Competitors',
             analytics: 'Analytics Hub',
-            competitors: 'Competitor Intelligence',
+            competitors: 'Competitor Intel',
             settings: 'Settings'
         };
         this.elements.pageTitle.textContent = titles[pageName] || 'Dashboard';
@@ -1262,17 +1262,31 @@ const UI = {
      */
     preparePriceDistribution(filteredDates) {
         const buckets = {
-            '$50-$75': 0,
-            '$75-$100': 0,
-            '$100-$125': 0,
-            '$125-$150': 0,
-            '$150-$175': 0,
-            '$175-$200': 0,
-            '$200-$225': 0,
-            '$225-$250': 0,
-            '$250-$275': 0,
-            '$275-$300': 0,
-            '$300+': 0
+            '$50-$75': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$75-$100': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$100-$125': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$125-$150': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$150-$175': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$175-$200': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$200-$225': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$225-$250': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$250-$275': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$275-$300': { count: 0, hasYourHotel: false, hasDirectComp: false },
+            '$300+': { count: 0, hasYourHotel: false, hasDirectComp: false }
+        };
+
+        const getBucket = (price) => {
+            if (price < 75) return '$50-$75';
+            if (price < 100) return '$75-$100';
+            if (price < 125) return '$100-$125';
+            if (price < 150) return '$125-$150';
+            if (price < 175) return '$150-$175';
+            if (price < 200) return '$175-$200';
+            if (price < 225) return '$200-$225';
+            if (price < 250) return '$225-$250';
+            if (price < 275) return '$250-$275';
+            if (price < 300) return '$275-$300';
+            return '$300+';
         };
 
         // Count hotels in each bucket across all dates
@@ -1281,23 +1295,32 @@ const UI = {
                 const price = hotel.price || 0;
                 if (price <= 0) return;
                 
-                if (price < 75) buckets['$50-$75']++;
-                else if (price < 100) buckets['$75-$100']++;
-                else if (price < 125) buckets['$100-$125']++;
-                else if (price < 150) buckets['$125-$150']++;
-                else if (price < 175) buckets['$150-$175']++;
-                else if (price < 200) buckets['$175-$200']++;
-                else if (price < 225) buckets['$200-$225']++;
-                else if (price < 250) buckets['$225-$250']++;
-                else if (price < 275) buckets['$250-$275']++;
-                else if (price < 300) buckets['$275-$300']++;
-                else buckets['$300+']++;
+                const bucket = getBucket(price);
+                buckets[bucket].count++;
+                
+                if (isYourHotel(hotel.name)) {
+                    buckets[bucket].hasYourHotel = true;
+                }
+                if (isDirectCompetitor(hotel.name)) {
+                    buckets[bucket].hasDirectComp = true;
+                }
             });
         });
 
+        const labels = Object.keys(buckets);
+        const yourHotelBins = [];
+        const directCompBins = [];
+        
+        labels.forEach((label, idx) => {
+            if (buckets[label].hasYourHotel) yourHotelBins.push(idx);
+            if (buckets[label].hasDirectComp) directCompBins.push(idx);
+        });
+
         return {
-            labels: Object.keys(buckets),
-            values: Object.values(buckets)
+            labels: labels,
+            counts: labels.map(l => buckets[l].count),
+            yourHotelBins: yourHotelBins,
+            directCompBins: directCompBins
         };
     },
 
@@ -1378,18 +1401,24 @@ const UI = {
                 break;
         }
 
-        // Render table
+        // Render table with highlighting for your hotels and direct competitors
         const tbody = this.elements.competitorTable.querySelector('tbody');
         tbody.innerHTML = hotels.map((hotel, index) => {
             const isYours = isYourHotel(hotel.name);
+            const isDirect = isDirectCompetitor(hotel.name);
+            const rowClass = isYours ? 'your-hotel-row' : (isDirect ? 'direct-competitor-row' : '');
+            const badge = isYours ? '<span class="table-badge yours">YOU</span>' : 
+                         (isDirect ? '<span class="table-badge direct">⚔️</span>' : '');
+            const starsHtml = hotel.rating && hotel.rating > 0 ? this.generateStarRating(hotel.rating) : '';
+            
             return `
-                <tr class="${isYours ? 'highlight' : ''}">
+                <tr class="${rowClass}">
                     <td>${index + 1}</td>
-                    <td>${hotel.name}</td>
-                    <td>$${hotel.price}</td>
-                    <td>--</td>
+                    <td>${hotel.name} ${badge}</td>
+                    <td><strong>$${hotel.price}</strong></td>
+                    <td>${hotel.deal ? `<span class="deal-tag">🏷️ ${hotel.deal}</span>` : '--'}</td>
                     <td>${hotel.vendor || '--'}</td>
-                    <td>${hotel.rating ? hotel.rating.toFixed(1) : '--'}</td>
+                    <td>${starsHtml} ${hotel.rating ? hotel.rating.toFixed(1) : '--'}</td>
                     <td>${hotel.reviewCount || '--'}</td>
                 </tr>
             `;
@@ -2331,7 +2360,8 @@ const UI = {
         
         // Compare recent dates to find significant changes
         const alerts = [];
-        const recentDates = dates.slice(-7); // Last 7 days of data
+        const recentDates = dates.slice(-14); // Last 14 days of data
+        const today = new Date().toISOString().split('T')[0];
         
         for (let i = 1; i < recentDates.length; i++) {
             const prevDate = recentDates[i - 1];
@@ -2351,8 +2381,11 @@ const UI = {
                             hotel: hotel.name,
                             change,
                             changePercent,
-                            date: currDate,
-                            isDrop: change < 0
+                            forDate: currDate,  // The date the rate is FOR
+                            changedOn: today,   // When we detected the change
+                            isDrop: change < 0,
+                            isYours: isYourHotel(hotel.name),
+                            isDirect: isDirectCompetitor(hotel.name)
                         });
                     }
                 }
@@ -2369,18 +2402,29 @@ const UI = {
         if (alerts.length === 0) {
             this.elements.priceAlerts.innerHTML = '<div class="no-alerts">No significant price changes detected</div>';
         } else {
-            this.elements.priceAlerts.innerHTML = alerts.slice(0, 5).map(alert => `
-                <div class="alert-item ${alert.isDrop ? 'price-drop' : ''}">
-                    <span class="alert-icon">${alert.isDrop ? '📉' : '📈'}</span>
-                    <div class="alert-content">
-                        <div class="alert-hotel">${alert.hotel}</div>
-                        <div class="alert-detail">
-                            ${alert.isDrop ? 'Dropped' : 'Increased'} ${Math.abs(alert.changePercent).toFixed(0)}% 
-                            (${alert.isDrop ? '-' : '+'}$${Math.abs(alert.change)})
+            this.elements.priceAlerts.innerHTML = alerts.slice(0, 6).map(alert => {
+                const highlightClass = alert.isYours ? 'alert-yours' : (alert.isDirect ? 'alert-direct' : '');
+                const badge = alert.isYours ? '<span class="alert-badge yours">YOU</span>' : 
+                             (alert.isDirect ? '<span class="alert-badge direct">⚔️</span>' : '');
+                
+                // Format dates nicely
+                const forDateObj = new Date(alert.forDate + 'T00:00:00');
+                const forDateStr = forDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                return `
+                    <div class="alert-item ${alert.isDrop ? 'price-drop' : ''} ${highlightClass}">
+                        <span class="alert-icon">${alert.isDrop ? '📉' : '📈'}</span>
+                        <div class="alert-content">
+                            <div class="alert-hotel">${alert.hotel} ${badge}</div>
+                            <div class="alert-detail">
+                                ${alert.isDrop ? 'Dropped' : 'Increased'} ${Math.abs(alert.changePercent).toFixed(0)}% 
+                                (${alert.isDrop ? '-' : '+'}$${Math.abs(alert.change)})
+                            </div>
+                            <div class="alert-context">For ${forDateStr}</div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
     },
 
@@ -2835,17 +2879,22 @@ const UI = {
         
         this.elements.mapHotelGrid.innerHTML = sortedHotels.map((hotel, index) => {
             const isYours = isYourHotel(hotel.name);
+            const isDirect = isDirectCompetitor(hotel.name);
+            const cardClass = isYours ? 'your-hotel' : (isDirect ? 'direct-competitor' : '');
             const diff = hotel.price - marketAvg;
-            const diffText = diff >= 0 ? `+$${diff} vs avg` : `-$${Math.abs(diff)} vs avg`;
+            const diffText = diff >= 0 ? `+$${diff.toFixed(0)} vs avg` : `-$${Math.abs(diff).toFixed(0)} vs avg`;
+            const badge = isYours ? '★ ' : (isDirect ? '⚔️ ' : '');
+            const starsHtml = hotel.rating && hotel.rating > 0 ? this.generateStarRating(hotel.rating) : '';
             
             return `
-                <div class="map-hotel-card ${isYours ? 'your-hotel' : ''}">
-                    <div class="map-hotel-name">${isYours ? '★ ' : ''}${hotel.name}</div>
+                <div class="map-hotel-card ${cardClass}">
+                    <div class="map-hotel-name">${badge}${hotel.name}</div>
                     <div class="map-hotel-price">$${hotel.price}</div>
                     <div class="map-hotel-meta">
                         <span>#${index + 1} in market</span>
                         <span>${diffText}</span>
                     </div>
+                    ${starsHtml ? `<div class="map-hotel-rating">${starsHtml} ${hotel.rating.toFixed(1)}</div>` : ''}
                 </div>
             `;
         }).join('');
@@ -2982,6 +3031,7 @@ const UI = {
         this.updateWeeklyTable(dateStr);
         this.updateGapConsistency();
         this.updateCompetitiveAlerts();
+        this.updateMyHotelsTrendChart();
         
         if (this.elements.battleDate) {
             this.elements.battleDate.textContent = formatDateShort(dateStr);
@@ -3179,13 +3229,143 @@ const UI = {
     },
 
     /**
+     * Update Price Trends chart for Direct Competitors page
+     */
+    updateMyHotelsTrendChart() {
+        const canvas = document.getElementById('myhotels-trend-chart');
+        if (!canvas) return;
+        
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        const dates = Object.keys(data.dates).sort().slice(-14); // Last 14 days
+        if (dates.length < 2) return;
+        
+        // Collect data for your hotels and direct competitors
+        const hotelDatasets = {};
+        
+        // Initialize with your hotels
+        Object.keys(CONFIG.yourHotels).forEach(name => {
+            hotelDatasets[name] = { 
+                label: name, 
+                prices: [], 
+                color: CONFIG.chartColors.primary,
+                isYours: true
+            };
+        });
+        
+        // Find direct competitors from data
+        dates.forEach(d => {
+            const hotels = data.dates[d]?.hotels || [];
+            hotels.forEach(h => {
+                if (isDirectCompetitor(h.name) && !hotelDatasets[h.name]) {
+                    hotelDatasets[h.name] = {
+                        label: h.name.substring(0, 20),
+                        prices: [],
+                        color: CONFIG.chartColors.directCompetitor || '#f97316',
+                        isYours: false
+                    };
+                }
+            });
+        });
+        
+        // Fill in prices for each date
+        dates.forEach(d => {
+            const hotels = data.dates[d]?.hotels || [];
+            
+            Object.keys(hotelDatasets).forEach(name => {
+                const hotel = hotels.find(h => 
+                    h.name === name || 
+                    h.name.toLowerCase().includes(name.toLowerCase()) ||
+                    name.toLowerCase().includes(h.name.toLowerCase().split(' ')[0])
+                );
+                hotelDatasets[name].prices.push(hotel?.price || null);
+            });
+        });
+        
+        // Build Chart.js datasets
+        const datasets = Object.values(hotelDatasets)
+            .filter(ds => ds.prices.some(p => p !== null))
+            .slice(0, 5) // Limit to 5 lines
+            .map((ds, idx) => ({
+                label: ds.label,
+                data: ds.prices,
+                borderColor: ds.isYours ? CONFIG.chartColors.primary : 
+                    ['#f97316', '#8b5cf6', '#ef4444', '#10b981'][idx % 4],
+                backgroundColor: 'transparent',
+                borderWidth: ds.isYours ? 3 : 2,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }));
+        
+        // Destroy existing chart
+        if (this.myHotelsTrendChartInstance) {
+            this.myHotelsTrendChartInstance.destroy();
+        }
+        
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim();
+        
+        this.myHotelsTrendChartInstance = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: dates.map(d => {
+                    const date = new Date(d + 'T00:00:00');
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                }),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: textColor, usePointStyle: true }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#cbd5e1',
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: $${context.raw || '--'}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: textColor }
+                    },
+                    y: {
+                        grid: { color: gridColor },
+                        ticks: { 
+                            color: textColor,
+                            callback: function(value) { return '$' + value; }
+                        },
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    },
+
+    /**
      * Initialize language selector
      */
     initLanguageSelector() {
-        if (this.elements.languageSelect && !this.elements.languageSelect.dataset.bound) {
-            this.elements.languageSelect.value = getLanguage();
-            this.elements.languageSelect.dataset.bound = 'true';
-            this.elements.languageSelect.addEventListener('change', (e) => {
+        // Re-query the element since it may not have been available on initial load
+        const languageSelect = document.getElementById('language-select');
+        if (languageSelect && !languageSelect.dataset.bound) {
+            languageSelect.value = getLanguage();
+            languageSelect.dataset.bound = 'true';
+            languageSelect.addEventListener('change', (e) => {
                 setLanguage(e.target.value);
                 this.showToast(`Language: ${e.target.value === 'es' ? 'Español' : 'English'} - Reloading...`, 'success');
                 setTimeout(() => window.location.reload(), 1000);

@@ -165,9 +165,13 @@ const Charts = {
                     label: 'Number of Hotels',
                     data: data.counts,
                     backgroundColor: data.labels.map((_, i) => {
-                        // Highlight the bin containing your hotels
+                        // Highlight the bin containing your hotels (gold)
                         if (data.yourHotelBins && data.yourHotelBins.includes(i)) {
                             return CONFIG.chartColors.primary;
+                        }
+                        // Highlight bins with direct competitors (orange)
+                        if (data.directCompBins && data.directCompBins.includes(i)) {
+                            return CONFIG.chartColors.directCompetitor || '#f97316';
                         }
                         return CONFIG.chartColors.secondary;
                     }),

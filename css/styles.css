@@ -4842,3 +4842,131 @@ body {
     background: rgba(251, 191, 36, 0.15);
     border-left: 4px solid var(--gold-500);
 }
+
+/* ============================================
+   PRICE ALERTS - ENHANCED STYLING
+   ============================================ */
+.alert-item.alert-yours {
+    background: rgba(251, 191, 36, 0.15) !important;
+    border-left: 4px solid var(--gold-500) !important;
+}
+
+.alert-item.alert-direct {
+    background: rgba(249, 115, 22, 0.1) !important;
+    border-left: 4px solid #f97316 !important;
+}
+
+.alert-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.alert-badge.yours {
+    background: var(--gold-500);
+    color: #000;
+}
+
+.alert-badge.direct {
+    background: #f97316;
+    color: #fff;
+}
+
+.alert-context {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+/* ============================================
+   COMPETITOR TABLE - DIRECT COMPETITOR HIGHLIGHTING
+   ============================================ */
+.competitor-table tbody tr.direct-competitor-row {
+    background: rgba(249, 115, 22, 0.1) !important;
+    border-left: 4px solid #f97316;
+}
+
+.competitor-table tbody tr.your-hotel-row {
+    background: rgba(251, 191, 36, 0.15) !important;
+    border-left: 4px solid var(--gold-500);
+}
+
+/* ============================================
+   MAP VIEW - DIRECT COMPETITOR MARKERS
+   ============================================ */
+.map-hotel-card.direct-competitor {
+    border-left: 4px solid #f97316;
+    background: rgba(249, 115, 22, 0.1);
+}
+
+.map-hotel-card.your-hotel {
+    border-left: 4px solid var(--gold-500);
+    background: rgba(251, 191, 36, 0.15);
+}
+
+/* ============================================
+   PRICE INTELLIGENCE - TALLER BOXES
+   ============================================ */
+.price-intelligence-grid .intel-card,
+.intel-grid .intel-card {
+    min-height: 420px !important;
+}
+
+.intel-card .card-content {
+    max-height: 350px !important;
+    overflow-y: auto;
+}
+
+/* ============================================
+   DIRECT COMPETITOR TREND CHART
+   ============================================ */
+#myhotels-trend-chart {
+    width: 100%;
+    height: 300px;
+}
+
+/* Table badges */
+.table-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+.table-badge.yours {
+    background: var(--gold-500);
+    color: #000;
+}
+
+.table-badge.direct {
+    background: #f97316;
+    color: #fff;
+}
+
+.deal-tag {
+    font-size: 0.75rem;
+    color: var(--success);
+}
+
+/* Stars in tables */
+.competitor-table .stars {
+    color: #fbbf24;
+    font-size: 0.85rem;
+}
+
+/* Map hotel rating */
+.map-hotel-rating {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+.map-hotel-rating .stars {
+    color: #fbbf24;
+}
