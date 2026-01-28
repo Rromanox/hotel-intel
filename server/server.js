@@ -575,6 +575,10 @@ app.delete('/api/rates', async (req, res) => {
 // AUTO-REFRESH ENDPOINT (for daily cron job)
 // ============================================
 
+// Lock to prevent multiple simultaneous refreshes
+let isRefreshing = false;
+let lastRefreshStart = null;
+
 /**
  * Auto-refresh all dates from May to October 2026
  * GET /api/auto-refresh
@@ -592,15 +596,31 @@ app.get('/api/auto-refresh', async (req, res) => {
         return res.status(401).json({ error: 'Invalid or missing key' });
     }
     
+    // LOCK: Prevent multiple simultaneous refreshes
+    if (isRefreshing) {
+        console.log('⚠️ AUTO-REFRESH BLOCKED: Already in progress since', lastRefreshStart);
+        return res.status(429).json({ 
+            ok: false, 
+            msg: 'Refresh already in progress',
+            startedAt: lastRefreshStart
+        });
+    }
+    
+    // Set the lock
+    isRefreshing = true;
+    lastRefreshStart = new Date().toISOString();
+    
     if (!SEARCHAPI_KEY) {
+        isRefreshing = false;
         return res.status(500).json({ error: 'API key not configured' });
     }
     
     if (!ratesCollection) {
+        isRefreshing = false;
         return res.status(503).json({ error: 'Database not available' });
     }
 
-    console.log('🔄 AUTO-REFRESH STARTED:', new Date().toISOString());
+    console.log('🔄 AUTO-REFRESH STARTED:', lastRefreshStart);
     
     // Define the season: May 1 - October 31, 2026
     const startDate = new Date('2026-05-01');
@@ -751,19 +771,18 @@ app.get('/api/auto-refresh', async (req, res) => {
     console.log(`   Failed: ${results.failed}`);
     console.log(`   Avg hotels/day: ${avgHotels}`);
     
+    // Keep response small for cron services with size limits
     res.json({
-        success: true,
-        message: 'Auto-refresh complete',
-        timestamp: new Date().toISOString(),
-        duration: `${duration}s`,
-        results: {
-            total: results.total,
-            success: results.success,
-            failed: results.failed,
-            avgHotelsPerDay: avgHotels
-        },
-        errors: results.errors.length > 0 ? results.errors.slice(0, 10) : [] // Only show first 10 errors
+        ok: true,
+        msg: 'Refresh complete',
+        ts: new Date().toISOString(),
+        dur: duration + 's',
+        success: results.success,
+        failed: results.failed
     });
+    
+    // Release the lock
+    isRefreshing = false;
 });
 
 /**

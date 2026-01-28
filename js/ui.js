@@ -3903,19 +3903,12 @@ const UI = {
         const tbody = document.getElementById('weekly-rate-body');
         if (!tbody) return;
         
-        console.log('=== WEEKLY GRID DEBUG ===');
-        console.log('Week dates:', weekDates);
-        console.log('Sorted hotels:', sortedHotels);
-        console.log('Price map:', priceMap);
-        
         let tbodyHtml = '';
         
         for (let h = 0; h < sortedHotels.length; h++) {
             const hotelName = sortedHotels[h];
             const hotelIsYours = isYourHotel(hotelName);
             const hotelIsDirect = isDirectCompetitor(hotelName);
-            
-            console.log('Building row for:', hotelName, 'isYours:', hotelIsYours, 'isDirect:', hotelIsDirect);
             
             const rowClass = hotelIsYours ? 'row-yours' : (hotelIsDirect ? 'row-direct' : '');
             const badge = hotelIsYours 
@@ -3974,9 +3967,6 @@ const UI = {
         if (sortedHotels.length === 0) {
             tbodyHtml = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-tertiary);">No data for this week. Try navigating to a different week.</td></tr>';
         }
-        
-        console.log('Final tbody HTML (first 500 chars):', tbodyHtml.substring(0, 500));
-        console.log('Number of <tr> tags:', (tbodyHtml.match(/<tr/g) || []).length);
         
         tbody.innerHTML = tbodyHtml;
     }
