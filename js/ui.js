@@ -596,6 +596,7 @@ const UI = {
             myhotels: 'Direct Competitors',
             analytics: 'Analytics Hub',
             competitors: 'Competitor Intel',
+            history: 'History Pricing',
             settings: 'Settings'
         };
         this.elements.pageTitle.textContent = titles[pageName] || 'Dashboard';
@@ -615,6 +616,8 @@ const UI = {
             this.initAnalyticsCharts();
         } else if (pageName === 'competitors') {
             this.initCompetitorPage();
+        } else if (pageName === 'history') {
+            this.initHistoryPricingPage();
         } else if (pageName === 'settings') {
             this.checkDatabaseStatus();
             this.initLanguageSelector();
@@ -3568,6 +3571,384 @@ const UI = {
                 }, 1000);
             });
             console.log('🌐 Language selector bound successfully');
+        }
+    },
+
+    // ============================================
+    // HISTORY PRICING PAGE
+    // ============================================
+    
+    historyCurrentWeekStart: null,
+    historyDateChart: null,
+    
+    initHistoryPricingPage() {
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        // Populate date selector
+        const dateSelect = document.getElementById('history-date-select');
+        if (dateSelect) {
+            const dates = Object.keys(data.dates).sort();
+            dateSelect.innerHTML = dates.map(d => {
+                const dateObj = new Date(d + 'T00:00:00');
+                const label = dateObj.toLocaleDateString('en-US', { 
+                    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' 
+                });
+                return `<option value="${d}">${label}</option>`;
+            }).join('');
+            
+            // Select a date in the middle (or first)
+            if (dates.length > 0) {
+                const midIndex = Math.floor(dates.length / 2);
+                dateSelect.value = dates[midIndex];
+                this.updateHistoryDateChart(dates[midIndex]);
+            }
+            
+            dateSelect.addEventListener('change', (e) => {
+                this.updateHistoryDateChart(e.target.value);
+            });
+        }
+        
+        // Initialize week navigation
+        const dates = Object.keys(data.dates).sort();
+        if (dates.length > 0) {
+            // Start with the first week that has data
+            const firstDate = new Date(dates[0] + 'T00:00:00');
+            // Get Monday of that week
+            const dayOfWeek = firstDate.getDay();
+            const monday = new Date(firstDate);
+            monday.setDate(firstDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            this.historyCurrentWeekStart = monday;
+            this.updateWeeklyRateGrid();
+        }
+        
+        // Bind week navigation
+        document.getElementById('prev-week-btn')?.addEventListener('click', () => {
+            this.historyCurrentWeekStart.setDate(this.historyCurrentWeekStart.getDate() - 7);
+            this.updateWeeklyRateGrid();
+        });
+        
+        document.getElementById('next-week-btn')?.addEventListener('click', () => {
+            this.historyCurrentWeekStart.setDate(this.historyCurrentWeekStart.getDate() + 7);
+            this.updateWeeklyRateGrid();
+        });
+    },
+    
+    updateHistoryDateChart(targetDate) {
+        const canvas = document.getElementById('history-date-chart');
+        if (!canvas) return;
+        
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        // For now, we'll show how this date's rate compares across the season
+        // When you have history data from multiple refreshes, this will show actual changes
+        
+        // Get all hotels for this date
+        const dateData = data.dates[targetDate];
+        if (!dateData?.hotels) {
+            this.showEmptyHistoryChart('No data for this date');
+            return;
+        }
+        
+        // Get your hotels and direct competitors
+        const relevantHotels = dateData.hotels.filter(h => 
+            isYourHotel(h.name) || isDirectCompetitor(h.name)
+        );
+        
+        if (relevantHotels.length === 0) {
+            this.showEmptyHistoryChart('No tracked hotels found');
+            return;
+        }
+        
+        // For the chart, show rate history from the database
+        // We need to fetch from the history collection
+        // For now, simulate with current data showing rate for this date across time
+        
+        const ctx = canvas.getContext('2d');
+        
+        if (this.historyDateChart) {
+            this.historyDateChart.destroy();
+        }
+        
+        // Build datasets showing each hotel's price for the selected date
+        // Currently we only have one snapshot, but as auto-refresh runs daily,
+        // we'll have multiple snapshots to compare
+        
+        const colors = {
+            yours: [CONFIG.chartColors.primary, '#22c55e'],
+            competitors: ['#ef4444', '#f97316', '#8b5cf6', '#3b82f6']
+        };
+        
+        let yoursIdx = 0;
+        let compIdx = 0;
+        
+        const datasets = relevantHotels.slice(0, 6).map(hotel => {
+            const isYours = isYourHotel(hotel.name);
+            const color = isYours ? colors.yours[yoursIdx++ % 2] : colors.competitors[compIdx++ % 4];
+            
+            return {
+                label: (hotel.name.length > 20 ? hotel.name.substring(0, 18) + '...' : hotel.name) + 
+                       (isYours ? ' (YOU)' : ''),
+                data: [hotel.price], // Will expand when we have history
+                borderColor: color,
+                backgroundColor: isYours ? color + '20' : 'transparent',
+                borderWidth: isYours ? 3 : 2,
+                fill: isYours,
+                stepped: true,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            };
+        });
+        
+        // Get timestamp of when this data was captured
+        const timestamp = dateData.timestamp ? new Date(dateData.timestamp) : new Date();
+        const label = timestamp.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        
+        this.historyDateChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [label + ' (current)'],
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { 
+                            color: '#94a3b8',
+                            usePointStyle: true,
+                            font: { size: 11 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: $${context.raw}`;
+                            },
+                            title: function(context) {
+                                return `Rate for ${targetDate}`;
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: `Rate tracking for ${new Date(targetDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`,
+                        color: '#94a3b8',
+                        font: { size: 14 }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                        ticks: { 
+                            color: '#94a3b8',
+                            callback: value => '$' + value
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+        
+        // Update legend below chart
+        const legendDiv = document.getElementById('history-chart-legend');
+        if (legendDiv) {
+            legendDiv.innerHTML = `
+                <p style="color: var(--text-tertiary); font-size: 0.85rem; margin: 0;">
+                    📊 As the daily auto-refresh runs, this chart will show how each hotel changed their rate for <strong>${targetDate}</strong> over time.
+                    <br>Currently showing: 1 snapshot from ${label}
+                </p>
+            `;
+        }
+    },
+    
+    showEmptyHistoryChart(message) {
+        const canvas = document.getElementById('history-date-chart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        if (this.historyDateChart) {
+            this.historyDateChart.destroy();
+        }
+        
+        this.historyDateChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [''], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: message,
+                        color: '#94a3b8',
+                        font: { size: 16 }
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                }
+            }
+        });
+    },
+    
+    updateWeeklyRateGrid() {
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+        
+        const weekStart = new Date(this.historyCurrentWeekStart);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        // Update week label
+        const weekLabel = document.getElementById('week-label');
+        if (weekLabel) {
+            const startStr = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const endStr = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            weekLabel.textContent = `${startStr} - ${endStr}`;
+        }
+        
+        // Get dates for this week
+        const weekDates = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(weekStart);
+            d.setDate(d.getDate() + i);
+            weekDates.push(d.toISOString().split('T')[0]);
+        }
+        
+        // Update header row
+        const headerRow = document.getElementById('weekly-header-row');
+        if (headerRow) {
+            headerRow.innerHTML = '<th>Hotel</th>' + weekDates.map(d => {
+                const dateObj = new Date(d + 'T00:00:00');
+                const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayNum = dateObj.getDate();
+                return `<th>${dayName}<br>${dayNum}</th>`;
+            }).join('');
+        }
+        
+        // Collect all hotels (yours + direct competitors)
+        const allHotels = new Map();
+        
+        weekDates.forEach(dateStr => {
+            const dateData = data.dates[dateStr];
+            if (!dateData?.hotels) return;
+            
+            dateData.hotels.forEach(hotel => {
+                if (isYourHotel(hotel.name) || isDirectCompetitor(hotel.name)) {
+                    if (!allHotels.has(hotel.name)) {
+                        allHotels.set(hotel.name, {
+                            name: hotel.name,
+                            isYours: isYourHotel(hotel.name),
+                            isDirect: isDirectCompetitor(hotel.name),
+                            prices: {}
+                        });
+                    }
+                    allHotels.get(hotel.name).prices[dateStr] = hotel.price;
+                }
+            });
+        });
+        
+        // Sort: Your hotels first, then direct competitors
+        const sortedHotels = Array.from(allHotels.values()).sort((a, b) => {
+            if (a.isYours && !b.isYours) return -1;
+            if (!a.isYours && b.isYours) return 1;
+            return a.name.localeCompare(b.name);
+        });
+        
+        // Calculate your average price per day for comparison
+        const yourAvgByDate = {};
+        weekDates.forEach(dateStr => {
+            const yourPrices = sortedHotels
+                .filter(h => h.isYours && h.prices[dateStr])
+                .map(h => h.prices[dateStr]);
+            yourAvgByDate[dateStr] = yourPrices.length > 0 
+                ? yourPrices.reduce((a, b) => a + b, 0) / yourPrices.length 
+                : null;
+        });
+        
+        // Build table body
+        const tbody = document.getElementById('weekly-rate-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = sortedHotels.map(hotel => {
+            const rowClass = hotel.isYours ? 'row-yours' : (hotel.isDirect ? 'row-direct' : '');
+            const badge = hotel.isYours 
+                ? '<span class="hotel-badge-small yours">YOU</span>' 
+                : (hotel.isDirect ? '<span class="hotel-badge-small direct">⚔️</span>' : '');
+            
+            const nameTruncated = hotel.name.length > 22 ? hotel.name.substring(0, 20) + '...' : hotel.name;
+            
+            const cells = weekDates.map((dateStr, idx) => {
+                const price = hotel.prices[dateStr];
+                const prevDateStr = idx > 0 ? weekDates[idx - 1] : null;
+                const prevPrice = prevDateStr ? hotel.prices[prevDateStr] : null;
+                
+                if (!price) {
+                    return '<td class="rate-cell no-data">--</td>';
+                }
+                
+                // Check if competitor is cheaper than you
+                const yourAvg = yourAvgByDate[dateStr];
+                const isCheaper = !hotel.isYours && yourAvg && price < yourAvg;
+                
+                // Check for price change
+                let changeHtml = '';
+                if (prevPrice && price !== prevPrice) {
+                    const diff = price - prevPrice;
+                    const isUp = diff > 0;
+                    changeHtml = `
+                        <div class="rate-old-new">$${prevPrice} → $${price}</div>
+                        <div class="rate-change ${isUp ? 'increased' : 'decreased'}">
+                            <span class="rate-arrow">${isUp ? '↑' : '↓'}</span>
+                            ${isUp ? '+' : ''}$${diff}
+                        </div>
+                    `;
+                }
+                
+                const cellClass = isCheaper ? 'rate-cell competitor-cheaper' : 'rate-cell';
+                
+                return `
+                    <td class="${cellClass}">
+                        <div class="rate-current">$${price}</div>
+                        ${changeHtml}
+                    </td>
+                `;
+            }).join('');
+            
+            return `
+                <tr class="${rowClass}">
+                    <td>
+                        <div class="hotel-name-cell">
+                            ${badge}
+                            <span title="${hotel.name}">${nameTruncated}</span>
+                        </div>
+                    </td>
+                    ${cells}
+                </tr>
+            `;
+        }).join('');
+        
+        // Show message if no data
+        if (sortedHotels.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${weekDates.length + 1}" style="text-align: center; padding: 40px; color: var(--text-tertiary);">
+                        No data for this week. Try navigating to a different week.
+                    </td>
+                </tr>
+            `;
         }
     }
 };

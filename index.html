@@ -130,6 +130,14 @@
                         </svg>
                         <span>Competitor Intel</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="history">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 8v4l3 3"/>
+                            <circle cx="12" cy="12" r="9"/>
+                            <path d="M3 12a9 9 0 0 1 9-9"/>
+                        </svg>
+                        <span>History Pricing</span>
+                    </a>
                 </div>
                 
                 <div class="nav-section">
@@ -868,6 +876,69 @@
                     </div>
                     <div class="map-hotel-grid" id="map-hotel-grid">
                         <p class="placeholder-text">Select a date to view hotel rates on the map</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- HISTORY PRICING PAGE -->
+            <!-- ============================================ -->
+            <div class="page" id="page-history">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">📈 History Pricing</h1>
+                        <p class="page-subtitle">Track how competitors change rates over time</p>
+                    </div>
+                </div>
+
+                <!-- Section 1: Single Date Tracker -->
+                <section class="history-section">
+                    <div class="section-header">
+                        <h3 class="section-title">🎯 Rate Changes for Single Date</h3>
+                        <div class="history-controls">
+                            <select id="history-date-select" class="history-select">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <p class="section-desc">See how rates for a specific date changed over multiple days of checking</p>
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="history-date-chart"></canvas>
+                    </div>
+                    <div class="history-chart-legend" id="history-chart-legend">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Section 2: Weekly Rate Grid -->
+                <section class="history-section">
+                    <div class="section-header">
+                        <h3 class="section-title">📋 Weekly Rate Grid</h3>
+                        <div class="week-navigation">
+                            <button class="week-nav-btn" id="prev-week-btn">◀ Prev</button>
+                            <span class="week-label" id="week-label">--</span>
+                            <button class="week-nav-btn" id="next-week-btn">Next ▶</button>
+                        </div>
+                    </div>
+                    <p class="section-desc">Overview of rate changes for a week - shows old rate → new rate when changed</p>
+                    <div class="weekly-grid-container">
+                        <table class="weekly-rate-table" id="weekly-rate-table">
+                            <thead>
+                                <tr id="weekly-header-row">
+                                    <th>Hotel</th>
+                                    <!-- Days populated by JS -->
+                                </tr>
+                            </thead>
+                            <tbody id="weekly-rate-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="history-legend">
+                        <span class="legend-item"><span class="legend-up">↑ +$X</span> Rate increased</span>
+                        <span class="legend-item"><span class="legend-down">↓ -$X</span> Rate decreased</span>
+                        <span class="legend-item"><span class="legend-yours">🟡</span> Your hotels</span>
+                        <span class="legend-item"><span class="legend-direct">⚔️</span> Direct competitors</span>
                     </div>
                 </section>
             </div>
