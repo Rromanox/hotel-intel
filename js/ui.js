@@ -872,8 +872,11 @@ const UI = {
 
         this.elements.dayRatesList.innerHTML = sortedHotels.map((hotel, index) => {
             // Generate star rating display
-            const rating = hotel.rating || 0;
+            const rating = hotel.rating;
             const starsHtml = this.generateStarRating(rating);
+            const ratingDisplay = (rating && rating > 0) 
+                ? `${starsHtml} <span class="rating-number">${rating.toFixed(1)}</span>`
+                : '';  // Show nothing if no rating
             
             // Deal badge
             const dealBadge = hotel.deal 
@@ -887,6 +890,12 @@ const UI = {
             const isYours = isYourHotel(hotel.name);
             const yourBadge = isYours ? '<span class="your-badge">YOU</span>' : '';
             
+            // Only show meta row if there's content
+            const hasMetaContent = ratingDisplay || dealBadge;
+            const metaRow = hasMetaContent 
+                ? `<div class="rate-hotel-meta">${ratingDisplay} ${dealBadge}</div>`
+                : '';
+            
             return `
                 <div class="day-rate-item ${isYours ? 'highlight' : ''} ${isCompetitor ? 'direct-competitor' : ''}">
                     <div class="rate-hotel-info">
@@ -896,10 +905,7 @@ const UI = {
                                 <span class="rate-hotel-name">${hotel.name}</span>
                                 ${yourBadge}${competitorBadge}
                             </div>
-                            <div class="rate-hotel-meta">
-                                ${starsHtml} <span class="rating-number">${rating > 0 ? rating.toFixed(1) : '--'}</span>
-                                ${dealBadge}
-                            </div>
+                            ${metaRow}
                         </div>
                     </div>
                     <span class="rate-hotel-price">$${hotel.price}</span>
@@ -912,7 +918,10 @@ const UI = {
      * Generate star rating HTML
      */
     generateStarRating(rating) {
-        if (!rating || rating <= 0) return '<span class="stars">--</span>';
+        // Handle null, undefined, 0, or invalid ratings
+        if (rating === null || rating === undefined || rating <= 0 || isNaN(rating)) {
+            return '';  // Return empty string instead of --
+        }
         
         const fullStars = Math.floor(rating);
         const hasHalfStar = rating % 1 >= 0.3;

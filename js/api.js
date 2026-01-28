@@ -63,12 +63,16 @@ const API = {
             name: property.name,
             price: price,
             vendor: property.rate_per_night?.source || 'Google Hotels',
-            rating: property.overall_rating || null,
+            rating: property.rating || property.overall_rating || null,  // SearchAPI uses 'rating'
             reviewCount: property.reviews || null,
             category: isYourHotel ? 'yours' : 'competitor',
-            hotelClass: property.hotel_class || null,
+            hotelClass: property.hotel_class || property.extracted_hotel_class || null,
             type: property.type || 'hotel',
-            isYourHotel: isYourHotel
+            isYourHotel: isYourHotel,
+            deal: property.deal || null,  // Deal info from SearchAPI
+            dealDescription: property.dealDescription || null,
+            priceBeforeTax: property.priceBeforeTax || null,
+            priceWithTax: property.priceWithTax || null
         };
     },
 
