@@ -3609,29 +3609,29 @@ const UI = {
             });
         }
         
-        // Initialize week navigation
-        const dates = Object.keys(data.dates).sort();
-        if (dates.length > 0) {
-            // Start with the first week that has data
-            const firstDate = new Date(dates[0] + 'T00:00:00');
-            // Get Monday of that week
-            const dayOfWeek = firstDate.getDay();
-            const monday = new Date(firstDate);
-            monday.setDate(firstDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-            this.historyCurrentWeekStart = monday;
-            this.updateWeeklyRateGrid();
+        // Initialize week navigation - start from May 4, 2026 (first Monday)
+        this.historyCurrentWeekStart = new Date('2026-05-04T00:00:00');
+        this.updateWeeklyRateGrid();
+        
+        // Bind week navigation (only once)
+        const prevBtn = document.getElementById('prev-week-btn');
+        const nextBtn = document.getElementById('next-week-btn');
+        
+        if (prevBtn && !prevBtn.dataset.bound) {
+            prevBtn.dataset.bound = 'true';
+            prevBtn.addEventListener('click', () => {
+                this.historyCurrentWeekStart.setDate(this.historyCurrentWeekStart.getDate() - 7);
+                this.updateWeeklyRateGrid();
+            });
         }
         
-        // Bind week navigation
-        document.getElementById('prev-week-btn')?.addEventListener('click', () => {
-            this.historyCurrentWeekStart.setDate(this.historyCurrentWeekStart.getDate() - 7);
-            this.updateWeeklyRateGrid();
-        });
-        
-        document.getElementById('next-week-btn')?.addEventListener('click', () => {
-            this.historyCurrentWeekStart.setDate(this.historyCurrentWeekStart.getDate() + 7);
-            this.updateWeeklyRateGrid();
-        });
+        if (nextBtn && !nextBtn.dataset.bound) {
+            nextBtn.dataset.bound = 'true';
+            nextBtn.addEventListener('click', () => {
+                this.historyCurrentWeekStart.setDate(this.historyCurrentWeekStart.getDate() + 7);
+                this.updateWeeklyRateGrid();
+            });
+        }
     },
     
     updateHistoryDateChart(targetDate) {
