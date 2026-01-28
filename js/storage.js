@@ -74,8 +74,30 @@ const Storage = {
      * Get the last update timestamp
      */
     getLastUpdate() {
+        // First check localStorage
         const timestamp = localStorage.getItem(CONFIG.updates.lastUpdateKey);
-        return timestamp ? new Date(timestamp) : null;
+        if (timestamp) {
+            return new Date(timestamp);
+        }
+        
+        // Fallback: check the most recent timestamp in the data
+        const data = this.loadData();
+        if (data && data.dates) {
+            let latestTimestamp = null;
+            Object.values(data.dates).forEach(dateData => {
+                if (dateData.timestamp) {
+                    const ts = new Date(dateData.timestamp);
+                    if (!latestTimestamp || ts > latestTimestamp) {
+                        latestTimestamp = ts;
+                    }
+                }
+            });
+            if (latestTimestamp) {
+                return latestTimestamp;
+            }
+        }
+        
+        return null;
     },
 
     /**

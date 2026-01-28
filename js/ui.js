@@ -2656,49 +2656,93 @@ const UI = {
             this.competitorChart.destroy();
         }
         
-        // Get price history for selected competitor
+        // Get price history for selected competitor AND your hotels
         const dates = Object.keys(data.dates).sort();
         const competitorPrices = [];
         const marketAvgs = [];
+        const rivieraPrices = [];
+        const americanPrices = [];
         const labels = [];
         
         dates.forEach(date => {
             const dateData = data.dates[date];
             const hotel = dateData.hotels?.find(h => h.name === hotelName);
-            if (hotel?.price) {
-                const d = new Date(date + 'T00:00:00');
-                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                competitorPrices.push(hotel.price);
-                
-                // Calculate market average for that date
-                const prices = dateData.hotels.map(h => h.price).filter(p => p > 0);
-                const avg = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : 0;
-                marketAvgs.push(Math.round(avg));
-            }
+            
+            // Find your hotels
+            const riviera = dateData.hotels?.find(h => 
+                h.name?.toLowerCase().includes('riviera'));
+            const american = dateData.hotels?.find(h => 
+                h.name?.toLowerCase().includes('american boutique'));
+            
+            const d = new Date(date + 'T00:00:00');
+            labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            
+            competitorPrices.push(hotel?.price || null);
+            rivieraPrices.push(riviera?.price || null);
+            americanPrices.push(american?.price || null);
+            
+            // Calculate market average for that date
+            const prices = dateData.hotels?.map(h => h.price).filter(p => p > 0) || [];
+            const avg = prices.length > 0 ? prices.reduce((a, b) => a + b, 0) / prices.length : null;
+            marketAvgs.push(avg ? Math.round(avg) : null);
         });
+        
+        // Build datasets
+        const datasets = [
+            {
+                label: hotelName.length > 25 ? hotelName.substring(0, 22) + '...' : hotelName,
+                data: competitorPrices,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.3,
+                fill: true,
+                borderWidth: 2
+            },
+            {
+                label: 'Market Average',
+                data: marketAvgs,
+                borderColor: '#64748b',
+                borderDash: [5, 5],
+                tension: 0.3,
+                fill: false,
+                borderWidth: 1,
+                pointRadius: 0
+            }
+        ];
+        
+        // Add Riviera if it has data and isn't the selected hotel
+        if (rivieraPrices.some(p => p !== null) && !hotelName.toLowerCase().includes('riviera')) {
+            datasets.push({
+                label: 'Riviera Motel (YOU)',
+                data: rivieraPrices,
+                borderColor: CONFIG.chartColors.primary,
+                backgroundColor: 'transparent',
+                tension: 0.3,
+                fill: false,
+                borderWidth: 3,
+                pointRadius: 2
+            });
+        }
+        
+        // Add American Boutique if it has data and isn't the selected hotel
+        if (americanPrices.some(p => p !== null) && !hotelName.toLowerCase().includes('american boutique')) {
+            datasets.push({
+                label: 'American Boutique (YOU)',
+                data: americanPrices,
+                borderColor: '#22c55e',
+                backgroundColor: 'transparent',
+                tension: 0.3,
+                fill: false,
+                borderWidth: 3,
+                pointRadius: 2
+            });
+        }
         
         this.competitorChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels,
-                datasets: [
-                    {
-                        label: hotelName,
-                        data: competitorPrices,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    },
-                    {
-                        label: 'Market Average',
-                        data: marketAvgs,
-                        borderColor: '#3d5a80',
-                        borderDash: [5, 5],
-                        tension: 0.3,
-                        fill: false
-                    }
-                ]
+                datasets
             },
             options: {
                 responsive: true,
@@ -2706,7 +2750,20 @@ const UI = {
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: { color: '#94a3b8' }
+                        labels: { 
+                            color: '#94a3b8',
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                if (context.raw === null) return null;
+                                return `${context.dataset.label}: $${context.raw}`;
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -2720,8 +2777,16 @@ const UI = {
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#94a3b8' }
+                        ticks: { 
+                            color: '#94a3b8',
+                            maxTicksLimit: 15
+                        }
                     }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
                 }
             }
         });
