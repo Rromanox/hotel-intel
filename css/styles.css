@@ -3775,3 +3775,466 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   MY HOTELS PAGE STYLES
+   ============================================ */
+
+.myhotels-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Battle Table */
+.battle-table-container {
+    overflow-x: auto;
+}
+
+.battle-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.battle-table th,
+.battle-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.battle-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.battle-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.battle-table .hotel-yours {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 3px solid var(--gold-500);
+}
+
+.battle-table .hotel-direct {
+    background: rgba(249, 115, 22, 0.1);
+    border-left: 3px solid #f97316;
+}
+
+.battle-table .hotel-name {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.battle-table .hotel-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.battle-table .badge-yours {
+    background: var(--gold-500);
+    color: #000;
+}
+
+.battle-table .badge-direct {
+    background: #f97316;
+    color: #fff;
+}
+
+.battle-table .vs-you {
+    font-weight: 600;
+}
+
+.battle-table .vs-you.negative {
+    color: var(--danger);
+}
+
+.battle-table .vs-you.positive {
+    color: var(--success);
+}
+
+.battle-table .gap-indicator {
+    font-size: 1.2rem;
+}
+
+/* Recommendation Section */
+.recommendation-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 24px;
+}
+
+.recommendation-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rec-stat {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.rec-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.rec-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.rec-value.highlight {
+    color: var(--gold-500);
+    font-size: 1.1rem;
+}
+
+.recommendation-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.rec-option {
+    padding: 16px;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border-color);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.rec-option:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.rec-option.aggressive {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.rec-option.competitive {
+    border-color: var(--info);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.rec-option.premium {
+    border-color: var(--gold-500);
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.rec-option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.rec-option-label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.rec-option-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.rec-option.aggressive .rec-option-price {
+    color: var(--success);
+}
+
+.rec-option.competitive .rec-option-price {
+    color: var(--info);
+}
+
+.rec-option.premium .rec-option-price {
+    color: var(--gold-500);
+}
+
+.rec-option-desc {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+/* Weekly Table */
+.weekly-table-container {
+    overflow-x: auto;
+}
+
+.weekly-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.weekly-table th,
+.weekly-table td {
+    padding: 10px 12px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.weekly-table th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.weekly-table th:first-child,
+.weekly-table td:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.weekly-table .row-yours {
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.weekly-table .row-direct {
+    background: rgba(249, 115, 22, 0.05);
+}
+
+.weekly-table .cell-lower {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    font-weight: 600;
+}
+
+.weekly-table .cell-higher {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.weekly-table .cell-equal {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Gap Consistency */
+.gap-consistency-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.gap-card {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+}
+
+.gap-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.gap-competitor-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gap-score {
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.gap-score.consistent {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.gap-score.variable {
+    background: rgba(251, 191, 36, 0.2);
+    color: var(--gold-500);
+}
+
+.gap-score.inconsistent {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.gap-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.gap-detail {
+    text-align: center;
+}
+
+.gap-detail-value {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.gap-detail-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+.gap-bar {
+    height: 8px;
+    background: var(--bg-hover);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.gap-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Competitive Alerts */
+.competitive-alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--border-color);
+}
+
+.alert-item.alert-danger {
+    border-left-color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.alert-item.alert-warning {
+    border-left-color: var(--gold-500);
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.alert-item.alert-success {
+    border-left-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.alert-icon {
+    font-size: 1.2rem;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-message {
+    color: var(--text-primary);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.alert-meta {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+/* Direct Competitor Highlighting (global) */
+.direct-competitor {
+    border-left: 3px solid #f97316 !important;
+    background: rgba(249, 115, 22, 0.05) !important;
+}
+
+.direct-competitor-badge {
+    display: inline-block;
+    background: #f97316;
+    color: white;
+    font-size: 0.65rem;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-left: 6px;
+    font-weight: 600;
+}
+
+/* Make dashboard boxes taller */
+.intel-card {
+    min-height: 350px;
+}
+
+.intel-card .card-content {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.activity-feed {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Recent Changes improvements */
+.activity-item {
+    position: relative;
+}
+
+.activity-date {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .recommendation-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .recommendation-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .gap-consistency-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .battle-table th,
+    .battle-table td {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+}

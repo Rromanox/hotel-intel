@@ -107,6 +107,13 @@
                         </svg>
                         <span>Map View</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="myhotels">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 21h18M5 21V7l8-4 8 4v14M9 21v-6h6v6"/>
+                            <circle cx="12" cy="10" r="2"/>
+                        </svg>
+                        <span>My Hotels</span>
+                    </a>
                     <a href="#" class="nav-item" data-page="analytics">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
@@ -985,7 +992,146 @@
                             </button>
                         </div>
                     </section>
+
+                    <!-- Language Section -->
+                    <section class="settings-section">
+                        <h3 class="settings-title">🌐 Language / Idioma</h3>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <span class="setting-label">Display Language</span>
+                                <span class="setting-desc">Change interface language</span>
+                            </div>
+                            <select id="language-select" class="setting-input">
+                                <option value="en">🇺🇸 English</option>
+                                <option value="es">🇪🇸 Español</option>
+                            </select>
+                        </div>
+                    </section>
                 </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- MY HOTELS PAGE - Dedicated Competition Analysis -->
+            <!-- ============================================ -->
+            <div class="page" id="page-myhotels">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title" data-translate="myHotelsVsCompetitors">My Hotels vs Direct Competitors</h1>
+                        <p class="page-subtitle">Detailed competitive analysis for your properties</p>
+                    </div>
+                    <div class="page-actions">
+                        <select id="myhotels-date-selector" class="date-selector">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Today's Battle Section -->
+                <section class="myhotels-section">
+                    <h3 class="section-title">⚔️ <span data-translate="todaysBattle">Today's Battle</span> - <span id="battle-date">--</span></h3>
+                    <div class="battle-table-container">
+                        <table class="battle-table" id="battle-table">
+                            <thead>
+                                <tr>
+                                    <th>Hotel</th>
+                                    <th>Rate</th>
+                                    <th>vs You</th>
+                                    <th>Position</th>
+                                    <th>Gap</th>
+                                </tr>
+                            </thead>
+                            <tbody id="battle-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Price Recommendation Section -->
+                <section class="myhotels-section recommendation-section">
+                    <h3 class="section-title">💡 <span data-translate="priceRecommendation">Price Recommendation</span></h3>
+                    <div class="recommendation-grid">
+                        <div class="recommendation-info">
+                            <div class="rec-stat">
+                                <span class="rec-label" data-translate="competitorRange">Competitor range</span>
+                                <span class="rec-value" id="rec-comp-range">$-- - $--</span>
+                            </div>
+                            <div class="rec-stat">
+                                <span class="rec-label" data-translate="marketAverage">Market average</span>
+                                <span class="rec-value" id="rec-market-avg">$--</span>
+                            </div>
+                            <div class="rec-stat">
+                                <span class="rec-label" data-translate="yourCurrentRate">Your current rate</span>
+                                <span class="rec-value highlight" id="rec-your-rate">$--</span>
+                            </div>
+                        </div>
+                        <div class="recommendation-options">
+                            <div class="rec-option aggressive">
+                                <div class="rec-option-header">
+                                    <span class="rec-option-label">🎯 <span data-translate="aggressive">Aggressive</span></span>
+                                    <span class="rec-option-price" id="rec-aggressive-price">$--</span>
+                                </div>
+                                <span class="rec-option-desc" data-translate="beatAllCompetitors">Beat all direct competitors</span>
+                            </div>
+                            <div class="rec-option competitive">
+                                <div class="rec-option-header">
+                                    <span class="rec-option-label">📊 <span data-translate="competitive">Competitive</span></span>
+                                    <span class="rec-option-price" id="rec-competitive-price">$--</span>
+                                </div>
+                                <span class="rec-option-desc" data-translate="middleOfPack">Middle of competitor pack</span>
+                            </div>
+                            <div class="rec-option premium">
+                                <div class="rec-option-header">
+                                    <span class="rec-option-label">📈 <span data-translate="premium">Premium</span></span>
+                                    <span class="rec-option-price" id="rec-premium-price">$--</span>
+                                </div>
+                                <span class="rec-option-desc" data-translate="aboveCompetitors">Above competitors, below market</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Weekly View Section -->
+                <section class="myhotels-section">
+                    <h3 class="section-title">📅 <span data-translate="weeklyView">Weekly View (Next 7 Days)</span></h3>
+                    <div class="weekly-table-container">
+                        <table class="weekly-table" id="weekly-table">
+                            <thead>
+                                <tr id="weekly-table-header">
+                                    <th>Hotel</th>
+                                    <!-- Date columns populated by JS -->
+                                </tr>
+                            </thead>
+                            <tbody id="weekly-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Gap Consistency Section -->
+                <section class="myhotels-section">
+                    <h3 class="section-title">📏 <span data-translate="gapConsistency">Gap Consistency Score</span></h3>
+                    <div class="gap-consistency-grid" id="gap-consistency-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Competitive Alerts Section -->
+                <section class="myhotels-section">
+                    <h3 class="section-title">🚨 <span data-translate="competitiveAlerts">Competitive Alerts</span></h3>
+                    <div class="competitive-alerts-list" id="competitive-alerts-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Competitor Trend Chart -->
+                <section class="myhotels-section">
+                    <h3 class="section-title">📈 Price Trends - You vs Direct Competitors</h3>
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="myhotels-trend-chart"></canvas>
+                    </div>
+                </section>
             </div>
         </main>
     </div>

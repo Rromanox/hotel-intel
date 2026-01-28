@@ -214,6 +214,25 @@ const UI = {
             dbSummary: document.getElementById('db-summary'),
             dbMonthsGrid: document.getElementById('db-months-grid'),
             
+            // My Hotels Page
+            myhotelsDateSelector: document.getElementById('myhotels-date-selector'),
+            battleDate: document.getElementById('battle-date'),
+            battleTableBody: document.getElementById('battle-table-body'),
+            weeklyTableHeader: document.getElementById('weekly-table-header'),
+            weeklyTableBody: document.getElementById('weekly-table-body'),
+            gapConsistencyGrid: document.getElementById('gap-consistency-grid'),
+            competitiveAlertsList: document.getElementById('competitive-alerts-list'),
+            myhotelsTrendChart: document.getElementById('myhotels-trend-chart'),
+            recCompRange: document.getElementById('rec-comp-range'),
+            recMarketAvg: document.getElementById('rec-market-avg'),
+            recYourRate: document.getElementById('rec-your-rate'),
+            recAggressivePrice: document.getElementById('rec-aggressive-price'),
+            recCompetitivePrice: document.getElementById('rec-competitive-price'),
+            recPremiumPrice: document.getElementById('rec-premium-price'),
+            
+            // Language
+            languageSelect: document.getElementById('language-select'),
+            
             // Toast container
             toastContainer: document.getElementById('toast-container')
         };
@@ -548,6 +567,7 @@ const UI = {
             dashboard: 'Dashboard',
             monthly: 'Monthly Views',
             map: 'Map View',
+            myhotels: 'My Hotels',
             analytics: 'Analytics Hub',
             competitors: 'Competitor Intelligence',
             settings: 'Settings'
@@ -563,6 +583,8 @@ const UI = {
             this.updateMonthDataBanner();
         } else if (pageName === 'map') {
             this.initMap();
+        } else if (pageName === 'myhotels') {
+            this.initMyHotelsPage();
         } else if (pageName === 'analytics') {
             this.initAnalyticsCharts();
         } else if (pageName === 'competitors') {
@@ -2663,5 +2685,240 @@ const UI = {
                 `;
             }).join('');
         }
+    },
+
+    // ============================================
+    // MY HOTELS PAGE FUNCTIONS
+    // ============================================
+
+    initMyHotelsPage() {
+        const dates = Storage.getAvailableDates();
+        if (this.elements.myhotelsDateSelector) {
+            this.elements.myhotelsDateSelector.innerHTML = dates.map(date => 
+                `<option value="${date}">${formatDateShort(date)}</option>`
+            ).join('');
+            
+            if (dates.length > 0) {
+                this.elements.myhotelsDateSelector.value = dates[dates.length - 1];
+            }
+            
+            this.elements.myhotelsDateSelector.addEventListener('change', (e) => {
+                this.updateMyHotelsPage(e.target.value);
+            });
+        }
+        
+        if (this.elements.languageSelect) {
+            this.elements.languageSelect.value = getLanguage();
+            this.elements.languageSelect.addEventListener('change', (e) => {
+                setLanguage(e.target.value);
+                this.showToast(`Language: ${e.target.value === 'es' ? 'Español' : 'English'}`, 'success');
+            });
+        }
+        
+        if (dates.length > 0) {
+            this.updateMyHotelsPage(dates[dates.length - 1]);
+        }
+    },
+
+    updateMyHotelsPage(dateStr) {
+        this.updateBattleTable(dateStr);
+        this.updatePriceRecommendation(dateStr);
+        this.updateWeeklyTable(dateStr);
+        this.updateGapConsistency();
+        this.updateCompetitiveAlerts();
+        
+        if (this.elements.battleDate) {
+            this.elements.battleDate.textContent = formatDateShort(dateStr);
+        }
+    },
+
+    updateBattleTable(dateStr) {
+        const data = Storage.loadData();
+        if (!data?.dates?.[dateStr] || !this.elements.battleTableBody) return;
+        
+        const hotels = data.dates[dateStr].hotels || [];
+        const sortedHotels = [...hotels].filter(h => h.price > 0).sort((a, b) => a.price - b.price);
+        
+        const yourHotels = sortedHotels.filter(h => isYourHotel(h.name));
+        const yourAvgPrice = yourHotels.length > 0 
+            ? yourHotels.reduce((sum, h) => sum + h.price, 0) / yourHotels.length : 0;
+        
+        const relevantHotels = sortedHotels.filter(h => isYourHotel(h.name) || isDirectCompetitor(h.name));
+        
+        this.elements.battleTableBody.innerHTML = relevantHotels.map(hotel => {
+            const isYours = isYourHotel(hotel.name);
+            const position = sortedHotels.findIndex(h => h.name === hotel.name) + 1;
+            const vsYou = isYours ? '--' : (hotel.price - yourAvgPrice);
+            const vsYouText = vsYou === '--' ? '--' : (vsYou < 0 ? `-$${Math.abs(vsYou).toFixed(0)}` : `+$${vsYou.toFixed(0)}`);
+            const vsYouClass = vsYou === '--' ? '' : (vsYou < 0 ? 'negative' : 'positive');
+            
+            let gapIcon = '';
+            if (!isYours && vsYou !== '--') {
+                if (vsYou < -10) gapIcon = '🔴';
+                else if (vsYou < 0) gapIcon = '⚠️';
+                else if (vsYou > 10) gapIcon = '✅';
+                else gapIcon = '➖';
+            }
+            
+            const rowClass = isYours ? 'hotel-yours' : 'hotel-direct';
+            const badge = isYours ? '<span class="hotel-badge badge-yours">YOU</span>' : '<span class="hotel-badge badge-direct">⚔️</span>';
+            
+            return `<tr class="${rowClass}">
+                <td class="hotel-name">${hotel.name} ${badge}</td>
+                <td><strong>$${hotel.price}</strong></td>
+                <td class="vs-you ${vsYouClass}">${vsYouText}</td>
+                <td>#${position} of ${sortedHotels.length}</td>
+                <td class="gap-indicator">${gapIcon}</td>
+            </tr>`;
+        }).join('');
+    },
+
+    updatePriceRecommendation(dateStr) {
+        const data = Storage.loadData();
+        if (!data?.dates?.[dateStr]) return;
+        
+        const hotels = data.dates[dateStr].hotels || [];
+        const directCompPrices = hotels.filter(h => isDirectCompetitor(h.name) && h.price > 0).map(h => h.price);
+        const yourHotels = hotels.filter(h => isYourHotel(h.name) && h.price > 0);
+        const yourPrice = yourHotels.length > 0 ? yourHotels[0].price : 0;
+        const allPrices = hotels.filter(h => h.price > 0).map(h => h.price);
+        const marketAvg = allPrices.length > 0 ? Math.round(allPrices.reduce((a, b) => a + b, 0) / allPrices.length) : 0;
+        
+        if (directCompPrices.length > 0) {
+            const compMin = Math.min(...directCompPrices);
+            const compMax = Math.max(...directCompPrices);
+            const compAvg = Math.round(directCompPrices.reduce((a, b) => a + b, 0) / directCompPrices.length);
+            
+            if (this.elements.recCompRange) this.elements.recCompRange.textContent = `$${compMin} - $${compMax}`;
+            if (this.elements.recMarketAvg) this.elements.recMarketAvg.textContent = `$${marketAvg}`;
+            if (this.elements.recYourRate) this.elements.recYourRate.textContent = yourPrice > 0 ? `$${yourPrice}` : 'N/A';
+            if (this.elements.recAggressivePrice) this.elements.recAggressivePrice.textContent = `$${compMax - 1}`;
+            if (this.elements.recCompetitivePrice) this.elements.recCompetitivePrice.textContent = `$${compAvg}`;
+            if (this.elements.recPremiumPrice) this.elements.recPremiumPrice.textContent = `$${Math.round((compMax + marketAvg) / 2)}`;
+        }
+    },
+
+    updateWeeklyTable(dateStr) {
+        const data = Storage.loadData();
+        if (!data?.dates || !this.elements.weeklyTableHeader || !this.elements.weeklyTableBody) return;
+        
+        const dates = getNextDates(dateStr, 7).filter(d => data.dates[d]);
+        if (dates.length === 0) return;
+        
+        let yourPrices = {};
+        dates.forEach(d => {
+            const h = (data.dates[d]?.hotels || []).find(h => isYourHotel(h.name) && h.price > 0);
+            yourPrices[d] = h?.price || 0;
+        });
+        
+        this.elements.weeklyTableHeader.innerHTML = `<th>Hotel</th>${dates.map(d => {
+            const date = new Date(d + 'T00:00:00');
+            return `<th>${DAY_NAMES_SHORT[date.getDay()]}<br>${date.getDate()}</th>`;
+        }).join('')}`;
+        
+        const hotelNames = [];
+        (data.dates[dates[0]]?.hotels || []).forEach(h => {
+            if (isYourHotel(h.name) || isDirectCompetitor(h.name)) hotelNames.push(h.name);
+        });
+        
+        this.elements.weeklyTableBody.innerHTML = hotelNames.map(name => {
+            const isYours = isYourHotel(name);
+            const cells = dates.map(d => {
+                const hotel = (data.dates[d]?.hotels || []).find(h => h.name === name);
+                const price = hotel?.price || 0;
+                let cellClass = '';
+                if (!isYours && price > 0 && yourPrices[d] > 0) {
+                    cellClass = price < yourPrices[d] ? 'cell-lower' : (price > yourPrices[d] ? 'cell-higher' : 'cell-equal');
+                }
+                return `<td class="${cellClass}">${price > 0 ? '$' + price : '--'}</td>`;
+            }).join('');
+            
+            return `<tr class="${isYours ? 'row-yours' : 'row-direct'}">
+                <td>${name.substring(0, 25)}${isYours ? ' ★' : ' ⚔️'}</td>${cells}
+            </tr>`;
+        }).join('');
+    },
+
+    updateGapConsistency() {
+        const data = Storage.loadData();
+        if (!data?.dates || !this.elements.gapConsistencyGrid) return;
+        
+        const dates = Object.keys(data.dates).sort();
+        if (dates.length < 5) {
+            this.elements.gapConsistencyGrid.innerHTML = '<p class="placeholder-text">Need 5+ days for gap analysis</p>';
+            return;
+        }
+        
+        const gapData = {};
+        dates.forEach(d => {
+            const hotels = data.dates[d]?.hotels || [];
+            const yourHotel = hotels.find(h => isYourHotel(h.name) && h.price > 0);
+            if (!yourHotel) return;
+            
+            hotels.filter(h => isDirectCompetitor(h.name) && h.price > 0).forEach(h => {
+                const key = h.name.substring(0, 20);
+                if (!gapData[key]) gapData[key] = { name: h.name, gaps: [] };
+                gapData[key].gaps.push(yourHotel.price - h.price);
+            });
+        });
+        
+        const cards = Object.values(gapData).slice(0, 4).map(comp => {
+            const avg = comp.gaps.reduce((a, b) => a + b, 0) / comp.gaps.length;
+            const min = Math.min(...comp.gaps);
+            const max = Math.max(...comp.gaps);
+            const range = max - min;
+            
+            let scoreClass = 'consistent', scoreText = 'Consistent ✅';
+            if (range > 15) { scoreClass = 'inconsistent'; scoreText = 'Inconsistent ⚠️'; }
+            else if (range > 8) { scoreClass = 'variable'; scoreText = 'Variable'; }
+            
+            return `<div class="gap-card">
+                <div class="gap-card-header">
+                    <span class="gap-competitor-name">⚔️ ${comp.name.substring(0, 18)}</span>
+                    <span class="gap-score ${scoreClass}">${scoreText}</span>
+                </div>
+                <div class="gap-details">
+                    <div class="gap-detail"><div class="gap-detail-value">${avg >= 0 ? '+' : ''}$${avg.toFixed(0)}</div><div class="gap-detail-label">Avg</div></div>
+                    <div class="gap-detail"><div class="gap-detail-value">${min >= 0 ? '+' : ''}$${min}</div><div class="gap-detail-label">Min</div></div>
+                    <div class="gap-detail"><div class="gap-detail-value">${max >= 0 ? '+' : ''}$${max}</div><div class="gap-detail-label">Max</div></div>
+                </div>
+            </div>`;
+        });
+        
+        this.elements.gapConsistencyGrid.innerHTML = cards.join('') || '<p class="placeholder-text">No competitor data</p>';
+    },
+
+    updateCompetitiveAlerts() {
+        const data = Storage.loadData();
+        if (!data?.dates || !this.elements.competitiveAlertsList) return;
+        
+        const dates = Object.keys(data.dates).sort().slice(-14);
+        const alerts = [];
+        
+        dates.forEach(d => {
+            const hotels = data.dates[d]?.hotels || [];
+            const yourHotel = hotels.find(h => isYourHotel(h.name) && h.price > 0);
+            if (!yourHotel) return;
+            
+            hotels.filter(h => isDirectCompetitor(h.name) && h.price > 0).forEach(h => {
+                const gap = yourHotel.price - h.price;
+                if (gap > 15) {
+                    alerts.push({ type: 'danger', icon: '🔴', msg: `${h.name.substring(0, 22)} is $${gap} below you`, date: d });
+                } else if (gap < -10) {
+                    alerts.push({ type: 'success', icon: '✅', msg: `You're $${Math.abs(gap)} cheaper than ${h.name.substring(0, 18)}`, date: d });
+                }
+            });
+        });
+        
+        const uniqueAlerts = alerts.slice(0, 8);
+        this.elements.competitiveAlertsList.innerHTML = uniqueAlerts.length > 0 
+            ? uniqueAlerts.map(a => `<div class="alert-item alert-${a.type}">
+                <span class="alert-icon">${a.icon}</span>
+                <div class="alert-content">
+                    <div class="alert-message">${a.msg}</div>
+                    <div class="alert-meta">For ${formatDateShort(a.date)}</div>
+                </div>
+            </div>`).join('')
+            : '<p class="placeholder-text">No alerts - prices are competitive!</p>';
     }
 };
