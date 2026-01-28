@@ -332,7 +332,16 @@ const API = {
     async loadFromDatabase() {
         try {
             console.log('📥 Loading data from database...');
-            const response = await fetch(CONFIG.api.ratesUrl);
+            
+            // Add timeout to prevent hanging if server is cold-starting
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const response = await fetch(CONFIG.api.ratesUrl, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
             const data = await response.json();
 
             if (data.success && data.dates) {
@@ -341,7 +350,11 @@ const API = {
             }
             return null;
         } catch (error) {
-            console.error('❌ Database load error:', error.message);
+            if (error.name === 'AbortError') {
+                console.warn('⏱️ Database load timeout - server may be waking up');
+            } else {
+                console.error('❌ Database load error:', error.message);
+            }
             return null;
         }
     },

@@ -513,9 +513,9 @@ const Charts = {
     /**
      * Prepare comparison data
      */
-    prepareComparisonData(datesData, limit = 7) {
+    prepareComparisonData(datesData, limit = 31) {
         const dates = Object.keys(datesData).sort();
-        const recentDates = dates.slice(-limit);
+        const recentDates = limit ? dates.slice(-limit) : dates;
 
         const labels = [];
         const yourHotels = [];
@@ -550,9 +550,9 @@ const Charts = {
     /**
      * Prepare position data
      */
-    preparePositionData(datesData, limit = 14) {
+    preparePositionData(datesData, limit = 31) {
         const dates = Object.keys(datesData).sort();
-        const recentDates = dates.slice(-limit);
+        const recentDates = limit ? dates.slice(-limit) : dates;
 
         const labels = [];
         const riviera = [];

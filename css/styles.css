@@ -3195,6 +3195,7 @@ body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    min-height: 380px;
 }
 
 .intel-header {
@@ -3220,6 +3221,9 @@ body {
 
 .intel-body {
     padding: 20px;
+    min-height: 300px;
+    max-height: 320px;
+    overflow-y: auto;
 }
 
 /* Price Position */
@@ -4969,4 +4973,212 @@ body {
 
 .map-hotel-rating .stars {
     color: #fbbf24;
+}
+
+/* ============================================
+   MOBILE RESPONSIVENESS FIX
+   ============================================ */
+@media (max-width: 768px) {
+    .main-content {
+        padding: 12px;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    
+    .analytics-controls {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+    }
+    
+    .analytics-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .analytics-date-label {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .intelligence-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .intel-card {
+        min-height: auto;
+    }
+    
+    .intel-body {
+        min-height: auto;
+        max-height: none;
+    }
+    
+    .chart-section {
+        padding: 12px;
+    }
+    
+    .chart-container {
+        height: 250px !important;
+        min-height: 250px;
+    }
+    
+    .myhotels-section {
+        padding: 12px !important;
+    }
+    
+    .battle-table {
+        font-size: 0.8rem;
+    }
+    
+    .battle-table th,
+    .battle-table td {
+        padding: 8px 6px;
+    }
+    
+    .recommendation-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .recommendation-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .weekly-table {
+        font-size: 0.75rem;
+    }
+    
+    .weekly-table th,
+    .weekly-table td {
+        padding: 6px 4px;
+    }
+    
+    .gap-consistency-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .day-rate-item {
+        padding: 10px 12px;
+    }
+    
+    .rate-hotel-name {
+        font-size: 0.9rem;
+    }
+    
+    .map-hotel-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .competitor-table {
+        font-size: 0.8rem;
+    }
+    
+    .competitor-table th,
+    .competitor-table td {
+        padding: 8px 6px;
+    }
+    
+    /* Prevent zoomed-in appearance */
+    .page {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    
+    .sidebar {
+        width: 100%;
+        max-width: 280px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header {
+        padding: 8px 12px;
+    }
+    
+    .header-actions {
+        gap: 8px;
+    }
+    
+    .btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .position-rank {
+        font-size: 2rem;
+    }
+    
+    .rec-option {
+        padding: 12px;
+    }
+    
+    .rec-option-price {
+        font-size: 1.4rem;
+    }
+}
+
+/* ============================================
+   DATA STATUS BANNER - COMPACT & DISMISSIBLE
+   ============================================ */
+.data-status-banner {
+    position: relative;
+    padding: 12px 16px;
+    padding-right: 40px;
+}
+
+.data-status-banner.compact {
+    padding: 8px 16px;
+    padding-right: 40px;
+}
+
+.data-status-banner.compact .status-icon {
+    display: none;
+}
+
+.data-status-banner.compact .status-content {
+    flex: 1;
+}
+
+.data-status-banner.compact .status-title {
+    font-size: 0.9rem;
+}
+
+.data-status-banner.compact .status-details {
+    font-size: 0.75rem;
+}
+
+.data-status-banner.compact .status-summary {
+    gap: 16px;
+}
+
+.data-status-banner.compact .stat-value {
+    font-size: 1.1rem;
+}
+
+.banner-dismiss {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.banner-dismiss:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.data-status-banner.hidden {
+    display: none !important;
 }

@@ -257,6 +257,21 @@ const UI = {
         if (this.eventsBound) return;
         this.eventsBound = true;
         
+        // Banner dismiss button
+        const dismissBanner = document.getElementById('dismiss-banner');
+        const statusBanner = document.getElementById('data-status-banner');
+        if (dismissBanner && statusBanner) {
+            dismissBanner.addEventListener('click', () => {
+                statusBanner.classList.add('hidden');
+                // Remember dismissal for this session
+                sessionStorage.setItem('bannerDismissed', 'true');
+            });
+            // Check if already dismissed this session
+            if (sessionStorage.getItem('bannerDismissed') === 'true') {
+                statusBanner.classList.add('hidden');
+            }
+        }
+        
         // Mobile menu toggle
         const sidebarOverlay = document.getElementById('sidebar-overlay');
         
@@ -1262,17 +1277,17 @@ const UI = {
      */
     preparePriceDistribution(filteredDates) {
         const buckets = {
-            '$50-$75': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$75-$100': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$100-$125': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$125-$150': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$150-$175': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$175-$200': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$200-$225': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$225-$250': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$250-$275': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$275-$300': { count: 0, hasYourHotel: false, hasDirectComp: false },
-            '$300+': { count: 0, hasYourHotel: false, hasDirectComp: false }
+            '$50-$75': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$75-$100': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$100-$125': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$125-$150': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$150-$175': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$175-$200': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$200-$225': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$225-$250': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$250-$275': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$275-$300': { counts: [], hasYourHotel: false, hasDirectComp: false },
+            '$300+': { counts: [], hasYourHotel: false, hasDirectComp: false }
         };
 
         const getBucket = (price) => {
@@ -1289,14 +1304,18 @@ const UI = {
             return '$300+';
         };
 
-        // Count hotels in each bucket across all dates
+        // Process each day separately
         Object.values(filteredDates).forEach(dateData => {
+            // Count per bucket for THIS day
+            const dayBuckets = {};
+            Object.keys(buckets).forEach(k => dayBuckets[k] = 0);
+            
             (dateData.hotels || []).forEach(hotel => {
                 const price = hotel.price || 0;
                 if (price <= 0) return;
                 
                 const bucket = getBucket(price);
-                buckets[bucket].count++;
+                dayBuckets[bucket]++;
                 
                 if (isYourHotel(hotel.name)) {
                     buckets[bucket].hasYourHotel = true;
@@ -1305,11 +1324,24 @@ const UI = {
                     buckets[bucket].hasDirectComp = true;
                 }
             });
+            
+            // Store this day's counts
+            Object.keys(buckets).forEach(k => {
+                buckets[k].counts.push(dayBuckets[k]);
+            });
         });
 
         const labels = Object.keys(buckets);
         const yourHotelBins = [];
         const directCompBins = [];
+        
+        // Calculate average count per bucket
+        const avgCounts = labels.map((label, idx) => {
+            const counts = buckets[label].counts;
+            if (counts.length === 0) return 0;
+            const avg = counts.reduce((a, b) => a + b, 0) / counts.length;
+            return Math.round(avg);
+        });
         
         labels.forEach((label, idx) => {
             if (buckets[label].hasYourHotel) yourHotelBins.push(idx);
@@ -1318,7 +1350,7 @@ const UI = {
 
         return {
             labels: labels,
-            counts: labels.map(l => buckets[l].count),
+            counts: avgCounts,
             yourHotelBins: yourHotelBins,
             directCompBins: directCompBins
         };
@@ -1448,9 +1480,19 @@ const UI = {
         const lastUpdate = Storage.getLastUpdate();
         const daysUntil = Storage.getDaysUntilUpdate();
 
-        // Total hotels
-        if (data && data.totalHotels) {
-            this.elements.totalHotels.textContent = data.totalHotels;
+        // Total hotels - calculate from data if not stored
+        if (this.elements.totalHotels) {
+            if (data && data.totalHotels) {
+                this.elements.totalHotels.textContent = data.totalHotels;
+            } else if (data && data.dates) {
+                // Calculate from first available date
+                const dates = Object.keys(data.dates);
+                if (dates.length > 0) {
+                    const firstDate = dates[0];
+                    const hotelCount = data.dates[firstDate]?.hotels?.length || 0;
+                    this.elements.totalHotels.textContent = hotelCount;
+                }
+            }
         }
 
         // Next update
@@ -3244,60 +3286,56 @@ const UI = {
         // Collect data for your hotels and direct competitors
         const hotelDatasets = {};
         
-        // Initialize with your hotels
-        Object.keys(CONFIG.yourHotels).forEach(name => {
-            hotelDatasets[name] = { 
-                label: name, 
-                prices: [], 
-                color: CONFIG.chartColors.primary,
-                isYours: true
-            };
-        });
-        
-        // Find direct competitors from data
+        // Find all hotels that are yours or direct competitors from the data
         dates.forEach(d => {
             const hotels = data.dates[d]?.hotels || [];
             hotels.forEach(h => {
-                if (isDirectCompetitor(h.name) && !hotelDatasets[h.name]) {
+                if (!h.name || !h.price) return;
+                
+                const isYours = isYourHotel(h.name);
+                const isDirect = isDirectCompetitor(h.name);
+                
+                if ((isYours || isDirect) && !hotelDatasets[h.name]) {
                     hotelDatasets[h.name] = {
-                        label: h.name.substring(0, 20),
+                        label: h.name.length > 25 ? h.name.substring(0, 22) + '...' : h.name,
+                        fullName: h.name,
                         prices: [],
-                        color: CONFIG.chartColors.directCompetitor || '#f97316',
-                        isYours: false
+                        isYours: isYours
                     };
                 }
             });
         });
         
-        // Fill in prices for each date
+        // Fill in prices for each date using exact name match
         dates.forEach(d => {
             const hotels = data.dates[d]?.hotels || [];
             
             Object.keys(hotelDatasets).forEach(name => {
-                const hotel = hotels.find(h => 
-                    h.name === name || 
-                    h.name.toLowerCase().includes(name.toLowerCase()) ||
-                    name.toLowerCase().includes(h.name.toLowerCase().split(' ')[0])
-                );
+                // Exact match only
+                const hotel = hotels.find(h => h.name === name);
                 hotelDatasets[name].prices.push(hotel?.price || null);
             });
         });
         
-        // Build Chart.js datasets
-        const datasets = Object.values(hotelDatasets)
+        // Build Chart.js datasets - yours first, then direct competitors
+        const yourHotelsData = Object.values(hotelDatasets).filter(ds => ds.isYours);
+        const directCompData = Object.values(hotelDatasets).filter(ds => !ds.isYours);
+        
+        const allData = [...yourHotelsData, ...directCompData]
             .filter(ds => ds.prices.some(p => p !== null))
-            .slice(0, 5) // Limit to 5 lines
-            .map((ds, idx) => ({
-                label: ds.label,
-                data: ds.prices,
-                borderColor: ds.isYours ? CONFIG.chartColors.primary : 
-                    ['#f97316', '#8b5cf6', '#ef4444', '#10b981'][idx % 4],
-                backgroundColor: 'transparent',
-                borderWidth: ds.isYours ? 3 : 2,
-                tension: 0.3,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }));
+            .slice(0, 5); // Limit to 5 lines
+        
+        const datasets = allData.map((ds, idx) => ({
+            label: ds.label,
+            data: ds.prices,
+            borderColor: ds.isYours ? CONFIG.chartColors.primary : 
+                ['#f97316', '#8b5cf6', '#ef4444', '#10b981'][idx % 4],
+            backgroundColor: 'transparent',
+            borderWidth: ds.isYours ? 3 : 2,
+            tension: 0.3,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        }));
         
         // Destroy existing chart
         if (this.myHotelsTrendChartInstance) {
@@ -3362,14 +3400,25 @@ const UI = {
     initLanguageSelector() {
         // Re-query the element since it may not have been available on initial load
         const languageSelect = document.getElementById('language-select');
+        console.log('🌐 Language selector init:', languageSelect ? 'found' : 'not found');
+        
         if (languageSelect && !languageSelect.dataset.bound) {
-            languageSelect.value = getLanguage();
+            const currentLang = getLanguage();
+            console.log('🌐 Current language:', currentLang);
+            languageSelect.value = currentLang;
             languageSelect.dataset.bound = 'true';
+            
             languageSelect.addEventListener('change', (e) => {
-                setLanguage(e.target.value);
-                this.showToast(`Language: ${e.target.value === 'es' ? 'Español' : 'English'} - Reloading...`, 'success');
-                setTimeout(() => window.location.reload(), 1000);
+                const newLang = e.target.value;
+                console.log('🌐 Changing language to:', newLang);
+                setLanguage(newLang);
+                this.showToast(`Language changed to ${newLang === 'es' ? 'Español' : 'English'} - Reloading...`, 'success');
+                setTimeout(() => {
+                    console.log('🌐 Reloading page...');
+                    window.location.reload();
+                }, 1000);
             });
+            console.log('🌐 Language selector bound successfully');
         }
     }
 };
