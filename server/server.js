@@ -1,6 +1,6 @@
 /**
  * Mackinaw Intel - API Proxy Server with MongoDB
- * - Proxies requests to SerpAPI (Google Hotels)
+ * - Proxies requests to SearchAPI.io (Google Hotels)
  * - Stores rate data in MongoDB for cross-device sync
  */
 
@@ -12,12 +12,16 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Environment variables
-const SERPAPI_KEY = process.env.SERPAPI_KEY;
+const SEARCHAPI_KEY = process.env.SEARCHAPI_KEY || process.env.SERPAPI_KEY;
 const MONGODB_URI = process.env.MONGODB_URI;
+
+// Mackinaw City bounding box [min_lng, min_lat, max_lng, max_lat]
+const MACKINAW_BOUNDING_BOX = '[-84.78,45.77,-84.71,45.80]';
 
 // MongoDB connection
 let db = null;
 let ratesCollection = null;
+let historyCollection = null;
 
 async function connectDB() {
     if (!MONGODB_URI) {
@@ -30,11 +34,13 @@ async function connectDB() {
         await client.connect();
         db = client.db('hotelintel');
         ratesCollection = db.collection('rates');
+        historyCollection = db.collection('rates_history');
         
-        // Create index on date for fast lookups
+        // Create indexes for fast lookups
         await ratesCollection.createIndex({ date: 1 }, { unique: true });
+        await historyCollection.createIndex({ date: 1, timestamp: 1 });
         
-        console.log('✅ Connected to MongoDB');
+        console.log('✅ Connected to MongoDB (rates + history)');
     } catch (error) {
         console.error('❌ MongoDB connection error:', error.message);
     }
@@ -57,22 +63,25 @@ app.use(express.json({ limit: '5mb' }));
 app.get('/', (req, res) => {
     res.json({ 
         status: 'ok', 
-        service: 'Mackinaw Intel API (SerpAPI + MongoDB)',
-        hasApiKey: !!SERPAPI_KEY,
+        service: 'Mackinaw Intel API (SearchAPI.io + MongoDB)',
+        hasApiKey: !!SEARCHAPI_KEY,
         hasDatabase: !!db
     });
 });
 
 // ============================================
-// SERPAPI ENDPOINTS
+// SEARCHAPI.IO ENDPOINTS
 // ============================================
 
 /**
- * Fetch hotels from SerpAPI
+ * Fetch hotels from SearchAPI.io
  * GET /api/hotels?checkin=2026-05-10&checkout=2026-05-11
+ * 
+ * Uses bounding box to only get Mackinaw City hotels
+ * (excludes St. Ignace and Mackinac Island)
  */
 app.get('/api/hotels', async (req, res) => {
-    if (!SERPAPI_KEY) {
+    if (!SEARCHAPI_KEY) {
         return res.status(500).json({ error: 'API key not configured' });
     }
 
@@ -82,126 +91,70 @@ app.get('/api/hotels', async (req, res) => {
         return res.status(400).json({ error: 'checkin and checkout dates required' });
     }
 
+    // Convert date format from YYYY-MM-DD to YYYY-M-D (SearchAPI format)
+    const formatDate = (dateStr) => {
+        const [year, month, day] = dateStr.split('-');
+        return `${year}-${parseInt(month)}-${parseInt(day)}`;
+    };
+
     try {
-        // Primary search - focused query with lowest price sort to get more hotels
         const params = new URLSearchParams({
             engine: 'google_hotels',
-            q: 'Mackinaw City, Michigan, United States',
-            check_in_date: checkin,
-            check_out_date: checkout,
+            bounding_box: MACKINAW_BOUNDING_BOX,
+            check_in_date: formatDate(checkin),
+            check_out_date: formatDate(checkout),
             adults: adults,
             currency: 'USD',
             gl: 'us',
             hl: 'en',
-            sort_by: '3', // lowest price - surfaces budget/boutique hotels
-            api_key: SERPAPI_KEY
+            api_key: SEARCHAPI_KEY
         });
 
-        const url = `https://serpapi.com/search.json?${params}`;
+        const url = `https://www.searchapi.io/api/v1/search?${params}`;
         console.log(`📡 Fetching: ${checkin}`);
 
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.error) {
-            console.error('SerpAPI Error:', data.error);
+            console.error('SearchAPI Error:', data.error);
             return res.status(400).json({ error: data.error });
         }
 
-        let allProperties = data.properties || [];
-        console.log(`   Found ${allProperties.length} hotels in primary search`);
+        const properties = data.properties || [];
+        console.log(`   Found ${properties.length} hotels in Mackinaw City`);
 
         // Check if our hotels are in results
-        const hasAmerican = allProperties.some(p => 
+        const hasAmerican = properties.some(p => 
             p.name?.toLowerCase().includes('american boutique'));
-        const hasRiviera = allProperties.some(p => 
+        const hasRiviera = properties.some(p => 
             p.name?.toLowerCase().includes('riviera'));
+        
+        console.log(`   American Boutique: ${hasAmerican ? '✅' : '❌'}, Riviera: ${hasRiviera ? '✅' : '❌'}`);
 
-        // If American Boutique Inn is missing, try a targeted search
-        if (!hasAmerican) {
-            console.log(`   ⚠️ American Boutique missing - trying targeted search`);
-            try {
-                const backupParams = new URLSearchParams({
-                    engine: 'google_hotels',
-                    q: 'American Boutique Inn Mackinaw City Michigan',
-                    check_in_date: checkin,
-                    check_out_date: checkout,
-                    adults: adults,
-                    currency: 'USD',
-                    gl: 'us',
-                    hl: 'en',
-                    api_key: SERPAPI_KEY
-                });
-
-                const backupUrl = `https://serpapi.com/search.json?${backupParams}`;
-                const backupResponse = await fetch(backupUrl);
-                const backupData = await backupResponse.json();
-
-                if (backupData.properties?.length > 0) {
-                    // Add American Boutique if found
-                    const american = backupData.properties.find(p => 
-                        p.name?.toLowerCase().includes('american boutique'));
-                    if (american) {
-                        allProperties.push(american);
-                        console.log(`   ✅ Found American Boutique in targeted search`);
-                    }
-                }
-            } catch (backupError) {
-                console.log(`   ❌ Backup search failed: ${backupError.message}`);
+        // Transform properties to consistent format
+        const transformedProperties = properties.map(p => ({
+            name: p.name,
+            price: p.price_per_night?.extracted_price || p.total_price?.extracted_price || 0,
+            rating: p.rating || 0,
+            reviews: p.reviews || 0,
+            hotel_class: p.extracted_hotel_class || 0,
+            amenities: p.amenities || [],
+            gps_coordinates: p.gps_coordinates,
+            property_token: p.property_token,
+            link: p.link,
+            // Keep original rate_per_night for compatibility
+            rate_per_night: {
+                lowest: p.price_per_night?.extracted_price || p.total_price?.extracted_price || 0,
+                price: p.price_per_night?.price || p.total_price?.price || null
             }
-        }
-
-        // If still missing hotels, try highest rating sort for different results
-        if (allProperties.length < 10) {
-            console.log(`   ⚠️ Only ${allProperties.length} hotels - trying rating sort`);
-            try {
-                const ratingParams = new URLSearchParams({
-                    engine: 'google_hotels',
-                    q: 'hotels Mackinaw City MI',
-                    check_in_date: checkin,
-                    check_out_date: checkout,
-                    adults: adults,
-                    currency: 'USD',
-                    gl: 'us',
-                    hl: 'en',
-                    sort_by: '8', // highest rating
-                    api_key: SERPAPI_KEY
-                });
-
-                const ratingUrl = `https://serpapi.com/search.json?${ratingParams}`;
-                const ratingResponse = await fetch(ratingUrl);
-                const ratingData = await ratingResponse.json();
-
-                if (ratingData.properties?.length > 0) {
-                    // Add any new hotels not already in list
-                    const existingNames = new Set(allProperties.map(p => p.name?.toLowerCase().trim()));
-                    ratingData.properties.forEach(p => {
-                        if (!existingNames.has(p.name?.toLowerCase().trim())) {
-                            allProperties.push(p);
-                        }
-                    });
-                    console.log(`   ✅ Added hotels from rating sort, now ${allProperties.length} total`);
-                }
-            } catch (ratingError) {
-                console.log(`   ❌ Rating sort search failed: ${ratingError.message}`);
-            }
-        }
-
-        // Deduplicate by hotel name
-        const seen = new Set();
-        const uniqueProperties = allProperties.filter(p => {
-            const key = p.name?.toLowerCase().trim();
-            if (!key || seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-
-        console.log(`   📊 Total unique hotels: ${uniqueProperties.length}`);
+        }));
 
         res.json({
             success: true,
             date: checkin,
-            properties: uniqueProperties,
+            properties: transformedProperties,
+            pagination: data.pagination,
             search_metadata: data.search_metadata
         });
 
@@ -212,32 +165,28 @@ app.get('/api/hotels', async (req, res) => {
 });
 
 /**
- * Check SerpAPI account status
+ * Check SearchAPI.io account status
  * GET /api/account
+ * 
+ * Note: SearchAPI.io doesn't have a direct account endpoint,
+ * so we return a simplified status
  */
 app.get('/api/account', async (req, res) => {
-    if (!SERPAPI_KEY) {
+    if (!SEARCHAPI_KEY) {
         return res.status(500).json({ error: 'API key not configured' });
     }
 
     try {
-        const url = `https://serpapi.com/account.json?api_key=${SERPAPI_KEY}`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.error) {
-            return res.status(400).json({ error: data.error });
-        }
-
+        // SearchAPI.io doesn't have an account info endpoint
+        // Return a basic response indicating the key is configured
         res.json({
             success: true,
-            plan: data.plan_name || 'Free',
-            searchesPerMonth: data.total_searches_left !== undefined 
-                ? data.total_searches_left + (data.this_month_usage || 0)
-                : 100,
-            searchesUsed: data.this_month_usage || 0,
-            searchesRemaining: data.total_searches_left || data.plan_searches_left || 0,
-            accountEmail: data.account_email || 'N/A'
+            plan: 'SearchAPI.io',
+            searchesPerMonth: 100,
+            searchesUsed: 'N/A - Check SearchAPI.io dashboard',
+            searchesRemaining: 'N/A - Check SearchAPI.io dashboard',
+            accountEmail: 'N/A',
+            note: 'Visit https://www.searchapi.io/dashboard for usage details'
         });
 
     } catch (error) {
@@ -251,9 +200,11 @@ app.get('/api/account', async (req, res) => {
 // ============================================
 
 /**
- * Save rate data for a date
+ * Save rate data for a date (with history tracking)
  * POST /api/rates
  * Body: { date: "2026-05-10", hotels: [...], timestamp: "..." }
+ * 
+ * If rates have changed from previous save, old data is archived to history
  */
 app.post('/api/rates', async (req, res) => {
     if (!ratesCollection) {
@@ -267,6 +218,28 @@ app.post('/api/rates', async (req, res) => {
     }
 
     try {
+        // Check if we have existing data for this date
+        const existingData = await ratesCollection.findOne({ date });
+        let savedToHistory = false;
+        
+        if (existingData && existingData.hotels && existingData.hotels.length > 0) {
+            // Compare rates to see if they changed
+            const hasChanges = checkForRateChanges(existingData.hotels, hotels);
+            
+            if (hasChanges && historyCollection) {
+                // Save old data to history
+                await historyCollection.insertOne({
+                    date,
+                    hotels: existingData.hotels,
+                    timestamp: existingData.timestamp,
+                    archivedAt: new Date()
+                });
+                savedToHistory = true;
+                console.log(`📜 Archived old rates for ${date} to history`);
+            }
+        }
+
+        // Save new data
         const result = await ratesCollection.updateOne(
             { date },
             { 
@@ -280,14 +253,61 @@ app.post('/api/rates', async (req, res) => {
             { upsert: true }
         );
 
-        console.log(`💾 Saved rates for ${date}: ${hotels.length} hotels`);
-        res.json({ success: true, date, hotelsCount: hotels.length });
+        console.log(`💾 Saved rates for ${date}: ${hotels.length} hotels${savedToHistory ? ' (history updated)' : ''}`);
+        res.json({ success: true, date, hotelsCount: hotels.length, savedToHistory });
 
     } catch (error) {
         console.error('Save error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
+
+/**
+ * Helper function to check if rates have changed
+ */
+function checkForRateChanges(oldHotels, newHotels) {
+    // Build price maps for comparison
+    const oldPrices = {};
+    oldHotels.forEach(h => {
+        if (h.name && h.price) {
+            oldPrices[h.name.toLowerCase()] = h.price;
+        }
+    });
+    
+    const newPrices = {};
+    newHotels.forEach(h => {
+        if (h.name && h.price) {
+            newPrices[h.name.toLowerCase()] = h.price;
+        }
+    });
+    
+    // Check for any price differences
+    for (const [name, oldPrice] of Object.entries(oldPrices)) {
+        const newPrice = newPrices[name];
+        if (newPrice && newPrice !== oldPrice) {
+            console.log(`   Rate change detected: ${name} $${oldPrice} → $${newPrice}`);
+            return true;
+        }
+    }
+    
+    // Check for new hotels
+    for (const name of Object.keys(newPrices)) {
+        if (!oldPrices[name]) {
+            console.log(`   New hotel detected: ${name}`);
+            return true;
+        }
+    }
+    
+    // Check for removed hotels
+    for (const name of Object.keys(oldPrices)) {
+        if (!newPrices[name]) {
+            console.log(`   Hotel removed: ${name}`);
+            return true;
+        }
+    }
+    
+    return false;
+}
 
 /**
  * Save multiple dates at once
@@ -375,6 +395,36 @@ app.get('/api/rates/summary', async (req, res) => {
 
     } catch (error) {
         console.error('Summary error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Get rate history for a specific date
+ * GET /api/rates/history/:date
+ */
+app.get('/api/rates/history/:date', async (req, res) => {
+    if (!historyCollection) {
+        return res.status(503).json({ error: 'History not available' });
+    }
+
+    const { date } = req.params;
+
+    try {
+        const history = await historyCollection
+            .find({ date })
+            .sort({ archivedAt: -1 })
+            .toArray();
+        
+        res.json({ 
+            success: true, 
+            date,
+            historyCount: history.length,
+            history 
+        });
+
+    } catch (error) {
+        console.error('History fetch error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });

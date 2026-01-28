@@ -414,9 +414,15 @@ const Charts = {
     /**
      * Prepare trend data from stored data
      */
-    prepareTrendData(datesData, limit = 31) {
+    prepareTrendData(datesData, limit = 62) {
         const dates = Object.keys(datesData).sort();
-        const recentDates = dates.slice(-limit);
+        // Only show dates that have actual data
+        const validDates = dates.filter(date => {
+            const dateData = datesData[date];
+            return dateData && dateData.hotels && dateData.hotels.length > 0;
+        });
+        
+        const recentDates = validDates.slice(-limit);
 
         const labels = [];
         const yourHotels = [];
@@ -426,9 +432,10 @@ const Charts = {
             const dateData = datesData[date];
             if (!dateData || !dateData.hotels) return;
 
-            // Format date label
+            // Format date label - show month/day
             const d = new Date(date + 'T00:00:00');
-            labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            labels.push(`${monthNames[d.getMonth()]} ${d.getDate()}`);
 
             // Calculate your hotels average
             const yourHotelData = dateData.hotels.filter(h => isYourHotel(h.name));

@@ -288,16 +288,22 @@ const UI = {
         this.elements.viewDailyBtn?.addEventListener('click', () => {
             this.elements.viewDailyBtn.classList.add('active');
             this.elements.viewMonthlyBtn?.classList.remove('active');
-            this.elements.dateSelector.style.display = '';
+            if (this.elements.dateSelector) {
+                this.elements.dateSelector.style.display = '';
+            }
             this.marketViewMode = 'daily';
             const selectedDate = this.elements.dateSelector?.value;
-            if (selectedDate) this.updateMarketOverview(selectedDate);
+            if (selectedDate) {
+                this.updateMarketOverviewDaily(selectedDate);
+            }
         });
         
         this.elements.viewMonthlyBtn?.addEventListener('click', () => {
             this.elements.viewMonthlyBtn.classList.add('active');
             this.elements.viewDailyBtn?.classList.remove('active');
-            this.elements.dateSelector.style.display = 'none';
+            if (this.elements.dateSelector) {
+                this.elements.dateSelector.style.display = 'none';
+            }
             this.marketViewMode = 'monthly';
             this.updateMarketOverviewMonthly();
         });
@@ -2263,6 +2269,31 @@ const UI = {
                 }
             }
         });
+    },
+
+    /**
+     * Update market overview for a specific day (Daily view)
+     */
+    updateMarketOverviewDaily(dateStr) {
+        const stats = Storage.getDateStats(dateStr);
+        
+        if (stats) {
+            this.elements.lowestRate.textContent = formatCurrency(stats.lowest);
+            this.elements.lowestHotel.textContent = stats.lowestHotel?.name || '--';
+            this.elements.highestRate.textContent = formatCurrency(stats.highest);
+            this.elements.highestHotel.textContent = stats.highestHotel?.name || '--';
+            this.elements.marketAvg.textContent = formatCurrency(stats.average);
+            this.elements.avgCount.textContent = `${stats.count} hotels`;
+            this.elements.priceSpread.textContent = formatCurrency(stats.spread);
+        } else {
+            this.elements.lowestRate.textContent = '--';
+            this.elements.lowestHotel.textContent = '--';
+            this.elements.highestRate.textContent = '--';
+            this.elements.highestHotel.textContent = '--';
+            this.elements.marketAvg.textContent = '--';
+            this.elements.avgCount.textContent = '-- hotels';
+            this.elements.priceSpread.textContent = '--';
+        }
     },
 
     /**
