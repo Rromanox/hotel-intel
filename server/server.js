@@ -546,7 +546,7 @@ app.delete('/api/rates', async (req, res) => {
 connectDB().then(() => {
     app.listen(PORT, () => {
         console.log(`🏨 Mackinaw Intel Server running on port ${PORT}`);
-        console.log(`   SerpAPI: ${SERPAPI_KEY ? '✅' : '❌'}`);
+        console.log(`   SearchAPI: ${SEARCHAPI_KEY ? '✅' : '❌'}`);
         console.log(`   MongoDB: ${db ? '✅' : '❌'}`);
     });
 });
