@@ -133,22 +133,51 @@ app.get('/api/hotels', async (req, res) => {
         console.log(`   American Boutique: ${hasAmerican ? '✅' : '❌'}, Riviera: ${hasRiviera ? '✅' : '❌'}`);
 
         // Transform properties to consistent format
-        const transformedProperties = properties.map(p => ({
-            name: p.name,
-            price: p.price_per_night?.extracted_price || p.total_price?.extracted_price || 0,
-            rating: p.rating || 0,
-            reviews: p.reviews || 0,
-            hotel_class: p.extracted_hotel_class || 0,
-            amenities: p.amenities || [],
-            gps_coordinates: p.gps_coordinates,
-            property_token: p.property_token,
-            link: p.link,
-            // Keep original rate_per_night for compatibility
-            rate_per_night: {
-                lowest: p.price_per_night?.extracted_price || p.total_price?.extracted_price || 0,
-                price: p.price_per_night?.price || p.total_price?.price || null
-            }
-        }));
+        // Use price_before_taxes when available (base room rate without taxes/fees)
+        const transformedProperties = properties.map(p => {
+            // Prefer price_before_taxes, fallback to regular price
+            const priceBeforeTax = p.price_per_night?.extracted_price_before_taxes 
+                || p.total_price?.extracted_price_before_taxes;
+            const priceWithTax = p.price_per_night?.extracted_price 
+                || p.total_price?.extracted_price;
+            
+            // Use before-tax price if available, otherwise use with-tax price
+            const basePrice = priceBeforeTax || priceWithTax || 0;
+            
+            return {
+                name: p.name,
+                price: basePrice,
+                priceWithTax: priceWithTax || 0,
+                priceBeforeTax: priceBeforeTax || null,
+                rating: p.rating || 0,
+                reviews: p.reviews || 0,
+                hotel_class: p.extracted_hotel_class || 0,
+                amenities: p.amenities || [],
+                gps_coordinates: p.gps_coordinates,
+                property_token: p.property_token,
+                link: p.link,
+                // Deal information
+                deal: p.deal || null,                    // e.g., "19% less than usual"
+                dealDescription: p.deal_description || null,  // e.g., "Deal"
+                // Keep original rate_per_night for compatibility
+                rate_per_night: {
+                    lowest: basePrice,
+                    price: p.price_per_night?.price_before_taxes || p.price_per_night?.price || null
+                }
+            };
+        });
+
+        // Log price comparison for debugging
+        const sampleHotel = transformedProperties.find(p => p.priceBeforeTax);
+        if (sampleHotel) {
+            console.log(`   💰 Sample: ${sampleHotel.name.substring(0, 25)} - Before tax: $${sampleHotel.priceBeforeTax}, With tax: $${sampleHotel.priceWithTax}`);
+        }
+        
+        // Log deals
+        const dealsCount = transformedProperties.filter(p => p.deal).length;
+        if (dealsCount > 0) {
+            console.log(`   🏷️ ${dealsCount} hotels with deals`);
+        }
 
         res.json({
             success: true,

@@ -230,6 +230,17 @@ const UI = {
             recCompetitivePrice: document.getElementById('rec-competitive-price'),
             recPremiumPrice: document.getElementById('rec-premium-price'),
             
+            // Analytics Hub
+            analyticsMonthSelect: document.getElementById('analytics-month-select'),
+            analyticsMonthlyBtn: document.getElementById('analytics-monthly-btn'),
+            analyticsDailyBtn: document.getElementById('analytics-daily-btn'),
+            analyticsDayGroup: document.getElementById('analytics-day-group'),
+            analyticsDaySelect: document.getElementById('analytics-day-select'),
+            analyticsDateRange: document.getElementById('analytics-date-range'),
+            priceDistDate: document.getElementById('price-dist-date'),
+            propsVsMarketDate: document.getElementById('props-vs-market-date'),
+            positionTimeDate: document.getElementById('position-time-date'),
+            
             // Language
             languageSelect: document.getElementById('language-select'),
             
@@ -591,6 +602,7 @@ const UI = {
             this.initCompetitorPage();
         } else if (pageName === 'settings') {
             this.checkDatabaseStatus();
+            this.initLanguageSelector();
         }
 
         // Close mobile sidebar
@@ -858,15 +870,62 @@ const UI = {
             .filter(h => h.price && h.price > 0)
             .sort((a, b) => a.price - b.price);
 
-        this.elements.dayRatesList.innerHTML = sortedHotels.map((hotel, index) => `
-            <div class="day-rate-item ${isYourHotel(hotel.name) ? 'highlight' : ''}">
-                <div class="rate-hotel-info">
-                    <span class="rate-hotel-rank">#${index + 1}</span>
-                    <span class="rate-hotel-name">${hotel.name}</span>
+        this.elements.dayRatesList.innerHTML = sortedHotels.map((hotel, index) => {
+            // Generate star rating display
+            const rating = hotel.rating || 0;
+            const starsHtml = this.generateStarRating(rating);
+            
+            // Deal badge
+            const dealBadge = hotel.deal 
+                ? `<span class="deal-badge" title="${hotel.deal}">🏷️ ${hotel.deal}</span>` 
+                : '';
+            
+            // Direct competitor badge
+            const isCompetitor = isDirectCompetitor(hotel.name);
+            const competitorBadge = isCompetitor ? '<span class="direct-comp-icon">⚔️</span>' : '';
+            
+            const isYours = isYourHotel(hotel.name);
+            const yourBadge = isYours ? '<span class="your-badge">YOU</span>' : '';
+            
+            return `
+                <div class="day-rate-item ${isYours ? 'highlight' : ''} ${isCompetitor ? 'direct-competitor' : ''}">
+                    <div class="rate-hotel-info">
+                        <span class="rate-hotel-rank">#${index + 1}</span>
+                        <div class="rate-hotel-details">
+                            <div class="rate-hotel-name-row">
+                                <span class="rate-hotel-name">${hotel.name}</span>
+                                ${yourBadge}${competitorBadge}
+                            </div>
+                            <div class="rate-hotel-meta">
+                                ${starsHtml} <span class="rating-number">${rating > 0 ? rating.toFixed(1) : '--'}</span>
+                                ${dealBadge}
+                            </div>
+                        </div>
+                    </div>
+                    <span class="rate-hotel-price">$${hotel.price}</span>
                 </div>
-                <span class="rate-hotel-price">$${hotel.price}</span>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+    },
+
+    /**
+     * Generate star rating HTML
+     */
+    generateStarRating(rating) {
+        if (!rating || rating <= 0) return '<span class="stars">--</span>';
+        
+        const fullStars = Math.floor(rating);
+        const hasHalfStar = rating % 1 >= 0.3;
+        
+        let html = '<span class="stars">';
+        for (let i = 0; i < fullStars && i < 5; i++) {
+            html += '★';
+        }
+        if (hasHalfStar && fullStars < 5) {
+            html += '½';
+        }
+        html += '</span>';
+        return html;
     },
 
     /**
@@ -1001,40 +1060,236 @@ const UI = {
     /**
      * Initialize analytics page charts
      */
+    // Analytics state
+    analyticsMode: 'monthly',
+    analyticsMonth: '2026-05',
+    analyticsDay: null,
+
     initAnalyticsCharts() {
         const data = Storage.loadData();
         if (!data || !data.dates) return;
 
-        const dates = Object.keys(data.dates).sort();
-        const latestDate = dates[dates.length - 1];
-        const latestData = data.dates[latestDate];
+        // Initialize controls
+        this.initAnalyticsControls();
+        
+        // Update charts with current selection
+        this.updateAnalyticsCharts();
+    },
 
-        // Price distribution chart
+    /**
+     * Initialize analytics controls and event listeners
+     */
+    initAnalyticsControls() {
+        // Month selector
+        if (this.elements.analyticsMonthSelect) {
+            // Find first month with data
+            const data = Storage.loadData();
+            const availableMonths = new Set();
+            Object.keys(data?.dates || {}).forEach(d => {
+                availableMonths.add(d.substring(0, 7)); // YYYY-MM
+            });
+            
+            // Set to first available month or default
+            const months = Array.from(availableMonths).sort();
+            if (months.length > 0) {
+                this.analyticsMonth = months[0];
+                this.elements.analyticsMonthSelect.value = months[0];
+            }
+            
+            this.elements.analyticsMonthSelect.addEventListener('change', (e) => {
+                this.analyticsMonth = e.target.value;
+                this.updateAnalyticsDaySelector();
+                this.updateAnalyticsCharts();
+            });
+        }
+
+        // View mode toggle
+        if (this.elements.analyticsMonthlyBtn) {
+            this.elements.analyticsMonthlyBtn.addEventListener('click', () => {
+                this.analyticsMode = 'monthly';
+                this.elements.analyticsMonthlyBtn.classList.add('active');
+                this.elements.analyticsDailyBtn.classList.remove('active');
+                if (this.elements.analyticsDayGroup) {
+                    this.elements.analyticsDayGroup.style.display = 'none';
+                }
+                this.updateAnalyticsCharts();
+            });
+        }
+
+        if (this.elements.analyticsDailyBtn) {
+            this.elements.analyticsDailyBtn.addEventListener('click', () => {
+                this.analyticsMode = 'daily';
+                this.elements.analyticsDailyBtn.classList.add('active');
+                this.elements.analyticsMonthlyBtn.classList.remove('active');
+                if (this.elements.analyticsDayGroup) {
+                    this.elements.analyticsDayGroup.style.display = 'block';
+                }
+                this.updateAnalyticsDaySelector();
+                this.updateAnalyticsCharts();
+            });
+        }
+
+        // Day selector
+        if (this.elements.analyticsDaySelect) {
+            this.elements.analyticsDaySelect.addEventListener('change', (e) => {
+                this.analyticsDay = e.target.value;
+                this.updateAnalyticsCharts();
+            });
+        }
+
+        // Initialize day selector
+        this.updateAnalyticsDaySelector();
+    },
+
+    /**
+     * Update day selector based on selected month
+     */
+    updateAnalyticsDaySelector() {
+        if (!this.elements.analyticsDaySelect) return;
+
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+
+        // Get dates for selected month
+        const monthDates = Object.keys(data.dates)
+            .filter(d => d.startsWith(this.analyticsMonth))
+            .sort();
+
+        this.elements.analyticsDaySelect.innerHTML = monthDates.map(date => {
+            const d = new Date(date + 'T00:00:00');
+            const dayName = DAY_NAMES_SHORT[d.getDay()];
+            return `<option value="${date}">${dayName}, ${d.getDate()}</option>`;
+        }).join('');
+
+        // Select first day
+        if (monthDates.length > 0) {
+            this.analyticsDay = monthDates[0];
+            this.elements.analyticsDaySelect.value = monthDates[0];
+        }
+    },
+
+    /**
+     * Update all analytics charts based on current selection
+     */
+    updateAnalyticsCharts() {
+        const data = Storage.loadData();
+        if (!data?.dates) return;
+
+        // Get dates for current selection
+        let dates, dateLabel;
+        
+        if (this.analyticsMode === 'monthly') {
+            dates = Object.keys(data.dates)
+                .filter(d => d.startsWith(this.analyticsMonth))
+                .sort();
+            
+            const [year, month] = this.analyticsMonth.split('-');
+            const monthName = MONTH_NAMES[parseInt(month) - 1];
+            dateLabel = `${monthName} ${year} (${dates.length} days)`;
+        } else {
+            dates = this.analyticsDay ? [this.analyticsDay] : [];
+            dateLabel = this.analyticsDay ? formatDateShort(this.analyticsDay) : '--';
+        }
+
+        // Update date range label
+        if (this.elements.analyticsDateRange) {
+            this.elements.analyticsDateRange.innerHTML = `Showing: <span>${dateLabel}</span>`;
+        }
+
+        // Update chart labels
+        if (this.elements.priceDistDate) {
+            this.elements.priceDistDate.textContent = dateLabel;
+        }
+        if (this.elements.propsVsMarketDate) {
+            this.elements.propsVsMarketDate.textContent = dateLabel;
+        }
+        if (this.elements.positionTimeDate) {
+            this.elements.positionTimeDate.textContent = dateLabel;
+        }
+
+        if (dates.length === 0) {
+            console.log('No data for selected period');
+            return;
+        }
+
+        // Build filtered data object
+        const filteredDates = {};
+        dates.forEach(d => {
+            if (data.dates[d]) {
+                filteredDates[d] = data.dates[d];
+            }
+        });
+
+        // Update Price Distribution Chart
         if (this.elements.priceDistributionChart) {
-            const distData = Charts.prepareDistributionData(latestData);
+            const distData = this.preparePriceDistribution(filteredDates);
             Charts.createPriceDistributionChart(
                 this.elements.priceDistributionChart.getContext('2d'),
                 distData
             );
         }
 
-        // Comparison chart
+        // Update Comparison Chart (Your Properties vs Market)
         if (this.elements.comparisonChart) {
-            const compData = Charts.prepareComparisonData(data.dates);
+            const compData = Charts.prepareComparisonData(filteredDates);
             Charts.createComparisonChart(
                 this.elements.comparisonChart.getContext('2d'),
                 compData
             );
         }
 
-        // Position chart
+        // Update Position Chart
         if (this.elements.positionChart) {
-            const posData = Charts.preparePositionData(data.dates);
+            const posData = Charts.preparePositionData(filteredDates);
             Charts.createPositionChart(
                 this.elements.positionChart.getContext('2d'),
                 posData
             );
         }
+    },
+
+    /**
+     * Prepare price distribution data from filtered dates
+     */
+    preparePriceDistribution(filteredDates) {
+        const buckets = {
+            '$50-$75': 0,
+            '$75-$100': 0,
+            '$100-$125': 0,
+            '$125-$150': 0,
+            '$150-$175': 0,
+            '$175-$200': 0,
+            '$200-$225': 0,
+            '$225-$250': 0,
+            '$250-$275': 0,
+            '$275-$300': 0,
+            '$300+': 0
+        };
+
+        // Count hotels in each bucket across all dates
+        Object.values(filteredDates).forEach(dateData => {
+            (dateData.hotels || []).forEach(hotel => {
+                const price = hotel.price || 0;
+                if (price <= 0) return;
+                
+                if (price < 75) buckets['$50-$75']++;
+                else if (price < 100) buckets['$75-$100']++;
+                else if (price < 125) buckets['$100-$125']++;
+                else if (price < 150) buckets['$125-$150']++;
+                else if (price < 175) buckets['$150-$175']++;
+                else if (price < 200) buckets['$175-$200']++;
+                else if (price < 225) buckets['$200-$225']++;
+                else if (price < 250) buckets['$225-$250']++;
+                else if (price < 275) buckets['$250-$275']++;
+                else if (price < 300) buckets['$275-$300']++;
+                else buckets['$300+']++;
+            });
+        });
+
+        return {
+            labels: Object.keys(buckets),
+            values: Object.values(buckets)
+        };
     },
 
     /**
@@ -2707,14 +2962,6 @@ const UI = {
             });
         }
         
-        if (this.elements.languageSelect) {
-            this.elements.languageSelect.value = getLanguage();
-            this.elements.languageSelect.addEventListener('change', (e) => {
-                setLanguage(e.target.value);
-                this.showToast(`Language: ${e.target.value === 'es' ? 'Español' : 'English'}`, 'success');
-            });
-        }
-        
         if (dates.length > 0) {
             this.updateMyHotelsPage(dates[dates.length - 1]);
         }
@@ -2920,5 +3167,20 @@ const UI = {
                 </div>
             </div>`).join('')
             : '<p class="placeholder-text">No alerts - prices are competitive!</p>';
+    },
+
+    /**
+     * Initialize language selector
+     */
+    initLanguageSelector() {
+        if (this.elements.languageSelect && !this.elements.languageSelect.dataset.bound) {
+            this.elements.languageSelect.value = getLanguage();
+            this.elements.languageSelect.dataset.bound = 'true';
+            this.elements.languageSelect.addEventListener('change', (e) => {
+                setLanguage(e.target.value);
+                this.showToast(`Language: ${e.target.value === 'es' ? 'Español' : 'English'} - Reloading...`, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            });
+        }
     }
 };

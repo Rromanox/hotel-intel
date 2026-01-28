@@ -269,13 +269,16 @@ const Storage = {
 
         const yourHotels = dateData.hotels.filter(hotel => isYourHotel(hotel.name));
         
-        // Add market position (rank)
+        // Add market position (rank) - sort by price lowest to highest
         const sortedHotels = [...dateData.hotels]
             .filter(h => h.price && h.price > 0)
             .sort((a, b) => a.price - b.price);
 
         yourHotels.forEach(hotel => {
-            const position = sortedHotels.findIndex(h => h.hotelId === hotel.hotelId);
+            // Find position by matching name (more reliable than hotelId)
+            const position = sortedHotels.findIndex(h => 
+                h.name?.toLowerCase().trim() === hotel.name?.toLowerCase().trim()
+            );
             hotel.marketPosition = position !== -1 ? position + 1 : null;
         });
 

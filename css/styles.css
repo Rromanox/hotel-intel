@@ -4190,18 +4190,21 @@ body {
     font-weight: 600;
 }
 
-/* Make dashboard boxes taller */
-.intel-card {
-    min-height: 350px;
+/* ============================================
+   OVERRIDE: Make dashboard boxes taller
+   ============================================ */
+.price-intelligence-grid .intel-card,
+.dashboard-grid .intel-card {
+    min-height: 400px !important;
 }
 
 .intel-card .card-content {
-    max-height: 280px;
+    max-height: 320px !important;
     overflow-y: auto;
 }
 
 .activity-feed {
-    max-height: 300px;
+    max-height: 350px !important;
     overflow-y: auto;
 }
 
@@ -4214,6 +4217,377 @@ body {
     font-size: 0.7rem;
     color: var(--text-tertiary);
     margin-top: 4px;
+}
+
+/* ============================================
+   MY HOTELS PAGE - FIXED STYLES
+   ============================================ */
+#page-myhotels {
+    padding: 20px;
+}
+
+#page-myhotels .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+#page-myhotels .page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+#page-myhotels .page-subtitle {
+    color: var(--text-secondary);
+    margin: 4px 0 0 0;
+}
+
+.myhotels-section {
+    background: var(--bg-secondary) !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    margin-bottom: 24px !important;
+    border: 1px solid var(--border-color);
+}
+
+.myhotels-section .section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 20px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Battle Table */
+.battle-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.battle-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.battle-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.battle-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.battle-table .hotel-yours {
+    background: rgba(251, 191, 36, 0.15) !important;
+    border-left: 4px solid var(--gold-500) !important;
+}
+
+.battle-table .hotel-direct {
+    background: rgba(249, 115, 22, 0.1) !important;
+    border-left: 4px solid #f97316 !important;
+}
+
+.battle-table .hotel-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.battle-table .badge-yours {
+    background: var(--gold-500);
+    color: #000;
+}
+
+.battle-table .badge-direct {
+    background: #f97316;
+    color: #fff;
+}
+
+.battle-table .vs-you.negative {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.battle-table .vs-you.positive {
+    color: var(--success);
+    font-weight: 600;
+}
+
+/* Recommendation Section */
+.recommendation-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+}
+
+.recommendation-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rec-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.rec-label {
+    color: var(--text-secondary);
+}
+
+.rec-value {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.rec-value.highlight {
+    color: var(--gold-500);
+    font-size: 1.3rem;
+}
+
+.recommendation-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.rec-option {
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.rec-option.aggressive {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.rec-option.competitive {
+    border-color: var(--info);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.rec-option.premium {
+    border-color: var(--gold-500);
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.rec-option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.rec-option-label {
+    font-weight: 600;
+}
+
+.rec-option-price {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.rec-option.aggressive .rec-option-price { color: var(--success); }
+.rec-option.competitive .rec-option-price { color: var(--info); }
+.rec-option.premium .rec-option-price { color: var(--gold-500); }
+
+.rec-option-desc {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+/* Weekly Table */
+.weekly-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.weekly-table th,
+.weekly-table td {
+    padding: 10px 12px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.weekly-table th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.weekly-table td:first-child,
+.weekly-table th:first-child {
+    text-align: left;
+    min-width: 180px;
+}
+
+.weekly-table .row-yours {
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.weekly-table .row-direct {
+    background: rgba(249, 115, 22, 0.05);
+}
+
+.weekly-table .cell-lower {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.weekly-table .cell-higher {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: var(--success);
+    font-weight: 600;
+}
+
+/* Gap Consistency Cards */
+.gap-consistency-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.gap-card {
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.gap-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.gap-competitor-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.gap-score {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.gap-score.consistent {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.gap-score.variable {
+    background: rgba(251, 191, 36, 0.2);
+    color: var(--gold-500);
+}
+
+.gap-score.inconsistent {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.gap-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    text-align: center;
+}
+
+.gap-detail-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.gap-detail-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+/* Competitive Alerts */
+.competitive-alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border-left: 4px solid var(--border-color);
+}
+
+.alert-item.alert-danger {
+    border-left-color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.alert-item.alert-success {
+    border-left-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.alert-icon {
+    font-size: 1.3rem;
+}
+
+.alert-message {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.alert-meta {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+.placeholder-text {
+    color: var(--text-tertiary);
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+}
+
+/* Date selector in My Hotels */
+#myhotels-date-selector {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.95rem;
 }
 
 /* Responsive */
@@ -4232,9 +4606,239 @@ body {
         grid-template-columns: 1fr;
     }
     
-    .battle-table th,
-    .battle-table td {
-        padding: 8px 10px;
-        font-size: 0.85rem;
+    #page-myhotels {
+        padding: 12px;
     }
+    
+    .myhotels-section {
+        padding: 16px !important;
+    }
+}
+
+/* ============================================
+   ANALYTICS HUB CONTROLS
+   ============================================ */
+.analytics-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 20px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.analytics-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.analytics-control-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.analytics-select {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    min-width: 150px;
+    cursor: pointer;
+}
+
+.analytics-select:hover {
+    border-color: var(--gold-500);
+}
+
+.analytics-toggle {
+    display: flex;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.analytics-toggle .toggle-btn {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.analytics-toggle .toggle-btn:hover {
+    color: var(--text-primary);
+}
+
+.analytics-toggle .toggle-btn.active {
+    background: var(--gold-500);
+    color: #000;
+}
+
+.analytics-date-label {
+    margin-left: auto;
+    padding: 10px 16px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.analytics-date-label span {
+    color: var(--gold-500);
+    font-weight: 600;
+}
+
+.chart-date-label {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .analytics-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .analytics-date-label {
+        margin-left: 0;
+        text-align: center;
+    }
+    
+    .analytics-toggle {
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   DAY RATES - STAR RATINGS & DEALS
+   ============================================ */
+.day-rate-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s ease;
+}
+
+.day-rate-item:hover {
+    background: var(--bg-hover);
+}
+
+.day-rate-item.highlight {
+    background: rgba(251, 191, 36, 0.15);
+    border-left: 4px solid var(--gold-500);
+}
+
+.day-rate-item.direct-competitor {
+    background: rgba(249, 115, 22, 0.08);
+    border-left: 4px solid #f97316;
+}
+
+.rate-hotel-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+}
+
+.rate-hotel-rank {
+    font-weight: 700;
+    color: var(--text-tertiary);
+    min-width: 30px;
+    font-size: 0.9rem;
+}
+
+.rate-hotel-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rate-hotel-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rate-hotel-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.rate-hotel-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+}
+
+.stars {
+    color: #fbbf24;
+    letter-spacing: 1px;
+}
+
+.rating-number {
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+}
+
+.your-badge {
+    display: inline-block;
+    background: var(--gold-500);
+    color: #000;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.direct-comp-icon {
+    font-size: 0.9rem;
+}
+
+.deal-badge {
+    display: inline-block;
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.rate-hotel-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    min-width: 60px;
+    text-align: right;
+}
+
+/* Direct competitor in highlight takes precedence */
+.day-rate-item.highlight.direct-competitor {
+    background: rgba(251, 191, 36, 0.15);
+    border-left: 4px solid var(--gold-500);
 }

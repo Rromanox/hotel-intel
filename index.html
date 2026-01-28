@@ -674,10 +674,42 @@
 
             <!-- Analytics Hub Page -->
             <div class="page" id="page-analytics">
+                <!-- Analytics Controls -->
+                <div class="analytics-controls">
+                    <div class="analytics-control-group">
+                        <label>Month</label>
+                        <select id="analytics-month-select" class="analytics-select">
+                            <option value="2026-05">May 2026</option>
+                            <option value="2026-06">June 2026</option>
+                            <option value="2026-07">July 2026</option>
+                            <option value="2026-08">August 2026</option>
+                            <option value="2026-09">September 2026</option>
+                            <option value="2026-10">October 2026</option>
+                        </select>
+                    </div>
+                    <div class="analytics-control-group">
+                        <label>View Mode</label>
+                        <div class="analytics-toggle">
+                            <button class="toggle-btn active" id="analytics-monthly-btn" data-mode="monthly">📅 Monthly</button>
+                            <button class="toggle-btn" id="analytics-daily-btn" data-mode="daily">📆 Single Day</button>
+                        </div>
+                    </div>
+                    <div class="analytics-control-group" id="analytics-day-group" style="display: none;">
+                        <label>Select Day</label>
+                        <select id="analytics-day-select" class="analytics-select">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="analytics-date-label">
+                        <span id="analytics-date-range">Showing: May 1 - May 31, 2026</span>
+                    </div>
+                </div>
+
                 <div class="analytics-grid">
                     <section class="chart-section full-width">
                         <div class="section-header">
                             <h2 class="section-title">Price Distribution</h2>
+                            <span class="chart-date-label" id="price-dist-date">--</span>
                         </div>
                         <div class="chart-container">
                             <canvas id="price-distribution-chart"></canvas>
@@ -687,6 +719,7 @@
                     <section class="chart-section">
                         <div class="section-header">
                             <h2 class="section-title">Your Properties vs Market</h2>
+                            <span class="chart-date-label" id="props-vs-market-date">--</span>
                         </div>
                         <div class="chart-container">
                             <canvas id="comparison-chart"></canvas>
@@ -696,6 +729,7 @@
                     <section class="chart-section">
                         <div class="section-header">
                             <h2 class="section-title">Market Position Over Time</h2>
+                            <span class="chart-date-label" id="position-time-date">--</span>
                         </div>
                         <div class="chart-container">
                             <canvas id="position-chart"></canvas>
